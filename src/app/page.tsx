@@ -23,7 +23,7 @@ export default function Home() {
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a
-                href="/app/write"
+                href="/login"
                 className="rounded-full bg-[#6f432a] px-6 py-3 text-center text-base font-medium text-[#fff8ec] shadow-sm transition hover:bg-[#56331f]"
               >
                 写第一封信
