@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RelationshipStatus {
+  PENDING_INVITE
+  CONNECTED
+  BLOCKED
+  ARCHIVED
+}
+
+enum LetterStatus {
+  DRAFT
+  PENDING_INVITE
+  POSTED
+  IN_TRANSIT
+  DELIVERED
+  OPENED
+}
+
+enum InvitationStatus {
+  PENDING
+  CLAIMED
+  EXPIRED
+  REJECTED
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  name                String?
+  avatarUrl           String?
+  defaultCityId       String?
+  defaultPostOfficeId String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  defaultCity       City?       @relation(fields: [defaultCityId], references: [id])
+  defaultPostOffice PostOffice? @relation(fields: [defaultPostOfficeId], references: [id])
+  sentLetters       Letter[]    @relation("SentLetters")
+  receivedLetters   Letter[]    @relation("ReceivedLetters")
+  invitations       Invitation[]
+  relationshipsA    Relationship[] @relation("RelationshipUserA")
+  relationshipsB    Relationship[] @relation("RelationshipUserB")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String
+  country   String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+
+  postOffices PostOffice[]
+  users       User[]
+
+  @@unique([name, country])
+}
+
+model PostOffice {
+  id        String   @id @default(cuid())
+  cityId    String
+  name      String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+
+  city              City     @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  users             User[]
+  sentLetters       Letter[] @relation("SenderPostOffice")
+  recipientLetters  Letter[] @relation("RecipientPostOffice")
+
+  @@unique([cityId, name])
+}
+
+model Letter {
+  id                    String       @id @default(cuid())
+  senderId              String
+  recipientId           String?
+  invitationId          String?      @unique
+  senderPostOfficeId    String?
+  recipientPostOfficeId String?
+  recipientHintName     String?
+  content               String
+  status                LetterStatus @default(DRAFT)
+  wordCount             Int
+  sentAt                DateTime?
+  deliveredAt           DateTime?
+  openedAt              DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  sender              User        @relation("SentLetters", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient           User?       @relation("ReceivedLetters", fields: [recipientId], references: [id])
+  invitation          Invitation? @relation(fields: [invitationId], references: [id])
+  senderPostOffice    PostOffice? @relation("SenderPostOffice", fields: [senderPostOfficeId], references: [id])
+  recipientPostOffice PostOffice? @relation("RecipientPostOffice", fields: [recipientPostOfficeId], references: [id])
+}
+
+model Invitation {
+  id                String           @id @default(cuid())
+  token             String           @unique
+  inviterId         String
+  letterId          String?          @unique
+  recipientHintName String
+  status            InvitationStatus @default(PENDING)
+  claimedByUserId   String?
+  createdAt         DateTime         @default(now())
+  claimedAt         DateTime?
+
+  inviter User    @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  letter  Letter?
+}
+
+model Relationship {
+  id                      String             @id @default(cuid())
+  userAId                 String
+  userBId                 String
+  status                  RelationshipStatus @default(CONNECTED)
+  createdFromInvitationId String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  userA User @relation("RelationshipUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("RelationshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+}
