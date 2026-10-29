@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const features = [
   "写信时文字实时落在信纸上，字数有限，表达更克制。",
   "寄信必须经过地图上的邮政局，而不是轻飘飘点一下发送。",
@@ -28,6 +30,12 @@ export default function Home() {
               >
                 写第一封信
               </a>
+              <Link
+                href="/letters/sample"
+                className="rounded-full border border-[#9b7a52] px-6 py-3 text-center text-base font-medium text-[#5d4329] transition hover:bg-[#fff8ec]"
+              >
+                拆开样例信
+              </Link>
               <a
                 href="/app/map"
                 className="rounded-full border border-[#9b7a52] px-6 py-3 text-center text-base font-medium text-[#5d4329] transition hover:bg-[#fff8ec]"
