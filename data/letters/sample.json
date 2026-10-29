@@ -1,0 +1,164 @@
+{
+  "slug": "sample",
+  "title": "南窗来信",
+  "timezone": "Asia/Shanghai",
+  "envelope": {
+    "to": "收信人",
+    "from": "南窗",
+    "postmark": "本地邮局"
+  },
+  "gate": {
+    "hint": "样例口令写在开发文档里，是四位数字，用来走通本地流程。",
+    "dials": 4,
+    "charset": "0123456789",
+    "passphraseHash": "scrypt$xc7Gapgz5-Kyo4sx9NXUOQ$zOKIle3nApIRV85vhy01WRRswoEqnMBvHaakbKDDvwA"
+  },
+  "bgm": {
+    "mode": "sequence",
+    "crossfadeMs": 1200,
+    "tracks": [
+      {
+        "id": "room-tone",
+        "title": "窗边",
+        "src": "/letter-media/sample/room-tone.wav"
+      },
+      {
+        "id": "night-road",
+        "title": "夜路",
+        "src": "/letter-media/sample/night-road.wav"
+      }
+    ]
+  },
+  "blocks": [
+    {
+      "id": "hero",
+      "type": "hero",
+      "kicker": "慢递",
+      "title": "南窗来信",
+      "subtitle": "一封用来走通开封、信纸和附件的样例，不是某一封私人来信。"
+    },
+    {
+      "id": "letter",
+      "unlockAt": "2024-01-01",
+      "type": "letter",
+      "dateline": "本地邮局 · 样例",
+      "salutation": "你见字：",
+      "signoff": "南窗",
+      "paragraphs": [
+        {
+          "id": "p1",
+          "text": "这封信故意走得慢。话先落在纸上，再经过火漆、邮戳和一段路，才算送到。"
+        },
+        {
+          "id": "p2",
+          "text": "如果你是在本地把流程走一遍，请把它当成柜台上的空白样张：可以改、可以预览。"
+        },
+        {
+          "id": "p-hidden",
+          "text": "折在纸背的那句是：重要的话值得等一等。",
+          "hidden": true
+        },
+        {
+          "id": "p-later",
+          "text": "嵌在未到期信纸里的句子",
+          "unlockAt": "2099-01-01"
+        }
+      ]
+    },
+    {
+      "id": "photos",
+      "unlockAt": "2024-01-01",
+      "type": "photos",
+      "title": "附在信里的三张小样",
+      "items": [
+        {
+          "id": "window",
+          "src": "/letter-media/sample/window.svg",
+          "alt": "窗台上的一封信",
+          "caption": "窗台"
+        },
+        {
+          "id": "postmark",
+          "src": "/letter-media/sample/postmark.svg",
+          "alt": "一枚圆形邮戳",
+          "caption": "邮戳"
+        },
+        {
+          "id": "mailbox",
+          "src": "/letter-media/sample/mailbox.svg",
+          "alt": "路边的信筒",
+          "caption": "信筒"
+        }
+      ]
+    },
+    {
+      "id": "voice",
+      "unlockAt": "2024-01-01",
+      "type": "voice",
+      "title": "折纸",
+      "caption": "一段现做的短声，当作信里夹带的声音样例。",
+      "src": "/letter-media/sample/paper.wav"
+    },
+    {
+      "id": "video",
+      "unlockAt": "2024-01-01",
+      "type": "video",
+      "title": "窗外",
+      "caption": "几秒钟的样例画面，没有旁白。",
+      "src": "/letter-media/sample/window.mp4",
+      "poster": "/letter-media/sample/window-poster.png"
+    },
+    {
+      "id": "road",
+      "type": "timeline",
+      "title": "这封样例的邮路",
+      "events": [
+        {
+          "id": "wrote",
+          "dateLabel": "2024-01-01",
+          "title": "写成样张",
+          "body": "先把该有的页都放进信封。"
+        },
+        {
+          "id": "openable",
+          "dateLabel": "现在",
+          "title": "可以拆",
+          "body": "口令对上之后，火漆才让开。"
+        },
+        {
+          "id": "later-stop",
+          "dateLabel": "2099-01-01",
+          "title": "后记启封",
+          "body": "未到期的邮路节点不应出现在页面里",
+          "unlockAt": "2099-01-01"
+        }
+      ]
+    },
+    {
+      "id": "ending",
+      "type": "ending",
+      "title": "先合上",
+      "text": "信到这里可以先合上。想改字、换图、换声音，去写信台。"
+    },
+    {
+      "id": "mark",
+      "type": "easter",
+      "hint": "邮戳边缘有一处浅印",
+      "text": "你找到了样例里的一处暗记。它只说明这封信被认真封过。"
+    },
+    {
+      "id": "postscript",
+      "unlockAt": "2099-01-01",
+      "type": "letter",
+      "dateline": "后记",
+      "salutation": "又及：",
+      "signoff": "南窗",
+      "paragraphs": [
+        {
+          "id": "postscript-p",
+          "text": "后记正文不应出现在未到期的页面里。到了日子，这里会多一句：路还在变长。"
+        }
+      ]
+    }
+  ]
+}

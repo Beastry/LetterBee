@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="postmark">
+  <rect width="640" height="480" fill="#f3e6d0"/>
+  <circle cx="320" cy="230" r="120" fill="none" stroke="#9f3f2f" stroke-width="10"/>
+  <circle cx="320" cy="230" r="96" fill="none" stroke="#9f3f2f" stroke-width="3"/>
+  <text x="320" y="224" text-anchor="middle" font-size="42" fill="#9f3f2f" font-family="serif">LOCAL</text>
+  <text x="320" y="268" text-anchor="middle" font-size="28" fill="#9f3f2f" font-family="serif">POST</text>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="mailbox">
+  <rect width="640" height="480" fill="#efe4d2"/>
+  <rect x="0" y="360" width="640" height="120" fill="#d7c3a4"/>
+  <rect x="292" y="210" width="56" height="160" fill="#8a6a45"/>
+  <rect x="220" y="120" width="200" height="120" rx="60" fill="#9f3f2f"/>
+  <rect x="248" y="164" width="144" height="18" rx="9" fill="#f6efe4"/>
+</svg>
