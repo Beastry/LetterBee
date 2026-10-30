@@ -170,6 +170,7 @@ MVP 不需要真的跑物流系统。
 ### User
 
 - id
+- publicId（公开唯一短码；可选支持自定义）
 - email
 - name
 - avatarUrl
@@ -227,6 +228,8 @@ MVP 不需要真的跑物流系统。
 - inviterId
 - letterId
 - recipientHintName
+- passphraseHash nullable
+- expiresAt nullable
 - status: pending / claimed / expired / rejected
 - claimedByUserId
 - createdAt
@@ -287,23 +290,26 @@ MVP 不需要真的跑物流系统。
 - 超字数不能提交
 - 预览实时更新
 
-### Phase 3：邀请认领闭环
+### Phase 3：用户 ID + 邀请认领闭环（下一阶段 · Neil 已确认）
 
-目标：第一封信能让对方注册认领。
+目标：公开用户 ID 可用；给未注册的人也能靠邀请链接完成收信冷启动。
 
 任务：
 
-- 生成 invitation token
-- `/invite/[token]` 页面
-- 对方登录后认领信件
-- 创建 Relationship
-- 设置信件 recipientId 和收件邮局
+- 注册时分配唯一 `publicId`（可选后续自定义短码）
+- 写信给熟人：按公开 ID 或通信簿选择收件人
+- 写信给新人：生成一次性 invitation token（可过期、可选口令）
+- `/invite/[token]`：可先展示「有人给你写信」，再注册/登录并认领
+- 认领后分配/沿用 ID，创建 Relationship，写入通信簿
+- 设置信件 recipientId 与收件邮局
 
 验收：
 
-- A 生成邀请链接
-- B 打开链接注册并认领
-- A/B 进入彼此通信簿
+- 新用户注册后可见并复制自己的公开 ID
+- A 用 B 的 ID 寄信成功（双方已 connected）
+- A 给未注册的人生成邀请链接；B 打开 → 注册 → 认领 → 获得 ID → 双方进通信簿
+- 过期或已用链接不可再次认领；可选口令校验失败不可读信
+- 无广场搜人 / 无按手机号邮箱搜用户入口
 
 ### Phase 4：寄信与配送状态
 
@@ -424,16 +430,6 @@ MVP 不需要真的跑物流系统。
 
 ## 8. 当前最应该马上做的事
 
-下一步直接做 Phase 0：初始化项目骨架。
+骨架与信笺模块已在仓内演进；**下一阶段开发重点是 Phase 3：用户 ID + 邀请认领闭环**（见上文验收标准）。
 
-建议命令方向：
-
-- create-next-app
-- TypeScript
-- Tailwind
-- App Router
-- Prisma
-- PostgreSQL Docker Compose
-- shadcn/ui
-
-然后先提交一个可以跑的基础版本。不要继续无限讨论产品细节，先把第一条信跑起来。
+实施前先把 Prisma `User.publicId`、Invitation 过期/口令字段与 `/invite/[token]` 流程对齐本文与[收件人关系流程](recipient-relationship-flow.md)。
