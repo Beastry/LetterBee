@@ -22,13 +22,14 @@ export default async function ContactsPage() {
                 <li key={id} className="rounded-xl border border-[#d7c3a4] p-4">
                   <p>{contact.name}</p>
                   <p className="mt-2 select-all font-mono">公开邮寄号：{contact.publicId}</p>
+                  <Link className="mt-3 inline-block underline" href={`/app/write?to=${encodeURIComponent(contact.publicId)}`}>写信 →</Link>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="mt-6 text-[#8a6a45]">还没有通邮的人。先给一个新的人写封信吧。</p>
           )}
-          <Link href="/app/write" className="mt-8 block underline">
+          <Link href="/app/write?mode=new" className="mt-8 block underline">
             写给一个新的人 →
           </Link>
         </section>
