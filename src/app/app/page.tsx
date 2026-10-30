@@ -43,7 +43,7 @@ export default async function AppHomePage() {
           >
             <h2 className="text-2xl font-semibold">写一封信</h2>
             <p className="mt-3 leading-7 text-[#6f5a43]">
-              编辑样例信的信纸、附件和配乐。寄出和邀请仍是后面的邮政流程。
+              写给一个新的人，让邀请链接捎去第一封信。
             </p>
           </Link>
           <Link
@@ -54,11 +54,11 @@ export default async function AppHomePage() {
             <p className="mt-3 leading-7 text-[#6f5a43]">调整常驻城市和默认收信邮局。</p>
           </Link>
           <Link
-            href="/letters/sample"
+            href="/app/contacts"
             className="rounded-[2rem] border border-[#d7c3a4] bg-[#fffaf0] p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#8a6a45]/10"
           >
-            <h2 className="text-2xl font-semibold">拆开样例信</h2>
-            <p className="mt-3 leading-7 text-[#6f5a43]">先对口令，再拆开火漆，看信纸、附件和背景声。</p>
+            <h2 className="text-2xl font-semibold">通信簿</h2>
+            <p className="mt-3 leading-7 text-[#6f5a43]">看看已经通邮的人，记下彼此的公开邮寄号。</p>
           </Link>
           <Link
             href="/app/map"

@@ -16,6 +16,7 @@ export default async function SettingsPage({
     redirect("/login");
   }
 
+  if (!rawUser.id || !rawUser.publicId) redirect("/login?next=/app/settings");
   const user = await ensurePublicId(rawUser);
 
   const selectedCity =

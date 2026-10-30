@@ -46,3 +46,7 @@ next-env.d.ts
 
 # local browser traces
 .playwright-mcp/
+
+# Local invitation mail store
+/data/mail/*.json
+/data/mail/*.tmp

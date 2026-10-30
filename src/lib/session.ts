@@ -1,22 +1,19 @@
 import { cookies } from "next/headers";
-import { allocatePublicId } from "./public-id";
+import { registerMailUser, type MailUser } from "./mail-store";
 
 const SESSION_COOKIE = "zqc_user";
 
 export type CurrentUser = {
+  id?: string;
   name: string;
   publicId?: string;
   cityId?: string;
   postOfficeId?: string;
 };
 
-export async function ensurePublicId(user: CurrentUser): Promise<CurrentUser & { publicId: string }> {
-  if (user.publicId) return { ...user, publicId: user.publicId };
-
-  // Cookie-only MVP: there is no shared user registry to check yet.
-  const publicId = await allocatePublicId(() => false);
-  const updatedUser = { ...user, publicId };
-  await setCurrentUser(updatedUser);
+export async function ensurePublicId(user: Omit<CurrentUser, "id"> & { id?: string }): Promise<MailUser> {
+  const updatedUser = await registerMailUser(user);
+  if (!user.id || user.publicId !== updatedUser.publicId) await setCurrentUser(updatedUser);
   return updatedUser;
 }
 
@@ -36,8 +33,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 }
 
 export async function setCurrentUser(user: CurrentUser): Promise<void> {
+  const registered = await registerMailUser(user);
   const cookieStore = await cookies();
-  const value = Buffer.from(JSON.stringify(user), "utf8").toString("base64url");
+  const value = Buffer.from(JSON.stringify(registered), "utf8").toString("base64url");
 
   cookieStore.set(SESSION_COOKIE, value, {
     httpOnly: true,

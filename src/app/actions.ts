@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { safeNextPath } from "@/lib/navigation";
 import { cityOptions } from "@/lib/cities";
 import { validateProfileSelection } from "@/lib/profile";
 import { clearCurrentUser, ensurePublicId, getCurrentUser, setCurrentUser } from "@/lib/session";
@@ -8,12 +9,14 @@ import { clearCurrentUser, ensurePublicId, getCurrentUser, setCurrentUser } from
 export async function loginAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
 
-  if (!name) {
-    redirect("/login?error=missing-name");
+  const next = safeNextPath(String(formData.get("next") ?? ""));
+  if (!name || name.length > 24) {
+    redirect(`/login?error=missing-name&next=${encodeURIComponent(next)}`);
   }
+  const existing = await getCurrentUser();
+  await ensurePublicId({ ...(existing ?? {}), name });
+  redirect(next);
 
-  await ensurePublicId({ name });
-  redirect("/app/settings");
 }
 
 export async function saveProfileAction(formData: FormData) {
