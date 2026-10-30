@@ -1,12 +1,24 @@
 import { cookies } from "next/headers";
+import { allocatePublicId } from "./public-id";
 
 const SESSION_COOKIE = "zqc_user";
 
 export type CurrentUser = {
   name: string;
+  publicId?: string;
   cityId?: string;
   postOfficeId?: string;
 };
+
+export async function ensurePublicId(user: CurrentUser): Promise<CurrentUser & { publicId: string }> {
+  if (user.publicId) return { ...user, publicId: user.publicId };
+
+  // Cookie-only MVP: there is no shared user registry to check yet.
+  const publicId = await allocatePublicId(() => false);
+  const updatedUser = { ...user, publicId };
+  await setCurrentUser(updatedUser);
+  return updatedUser;
+}
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const cookieStore = await cookies();

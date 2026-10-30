@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { cityOptions } from "@/lib/cities";
 import { validateProfileSelection } from "@/lib/profile";
-import { clearCurrentUser, getCurrentUser, setCurrentUser } from "@/lib/session";
+import { clearCurrentUser, ensurePublicId, getCurrentUser, setCurrentUser } from "@/lib/session";
 
 export async function loginAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -12,7 +12,7 @@ export async function loginAction(formData: FormData) {
     redirect("/login?error=missing-name");
   }
 
-  await setCurrentUser({ name });
+  await ensurePublicId({ name });
   redirect("/app/settings");
 }
 
@@ -35,8 +35,9 @@ export async function saveProfileAction(formData: FormData) {
     redirect(`/app/settings?error=${encodeURIComponent(result.error)}`);
   }
 
+  const userWithId = await ensurePublicId(currentUser);
   await setCurrentUser({
-    ...currentUser,
+    ...userWithId,
     cityId,
     postOfficeId,
   });

@@ -28,6 +28,8 @@ describe("validateProfileSelection", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("请选择该城市下的邮政局");
+    if (!result.ok) {
+      expect(result.error).toBe("请选择该城市下的邮政局");
+    }
   });
 });
