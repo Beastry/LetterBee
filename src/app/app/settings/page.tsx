@@ -1,19 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cityOptions } from "@/lib/cities";
-import { getCurrentUser } from "@/lib/session";
+import { ensurePublicId, getCurrentUser } from "@/lib/session";
 import { saveProfileAction } from "../../actions";
+import { PublicIdCard } from "./public-id-card";
 
 export default async function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [user, params] = await Promise.all([getCurrentUser(), searchParams]);
+  const [rawUser, params] = await Promise.all([getCurrentUser(), searchParams]);
 
-  if (!user) {
+  if (!rawUser) {
     redirect("/login");
   }
+
+  const user = await ensurePublicId(rawUser);
 
   const selectedCity =
     cityOptions.find((city) => city.id === user.cityId) ?? cityOptions[0];
@@ -33,6 +36,8 @@ export default async function SettingsPage({
           <p className="mt-4 leading-7 text-[#6f5a43]">
             第一版只精确到城市和邮政局，不记录真实门牌地址。后续寄给你的信会默认送到这里。
           </p>
+
+          <PublicIdCard publicId={user.publicId} />
 
           <form action={saveProfileAction} className="mt-8 space-y-6">
             <label className="block">

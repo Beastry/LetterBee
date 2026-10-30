@@ -4,6 +4,17 @@ import { cityOptions } from "../src/lib/cities";
 const prisma = new PrismaClient();
 
 async function main() {
+  for (const user of [
+    { email: "nearws@example.com", name: "远山", publicId: "nearws" },
+    { email: "xiaocao@example.com", name: "小草", publicId: "xiaocao" },
+  ]) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: { name: user.name, publicId: user.publicId },
+      create: user,
+    });
+  }
+
   for (const city of cityOptions) {
     const savedCity = await prisma.city.upsert({
       where: { id: city.id },
