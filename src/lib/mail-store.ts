@@ -1,0 +1,87 @@
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { allocatePublicId } from "./public-id";
+import { claimInviteState, DEFAULT_INVITE_TTL_MS, generateInviteToken, hashPassphrase, type InviteState } from "./invite";
+import { createConnectedRelationship } from "./relationship";
+
+export type MailUser = { id: string; name: string; publicId: string; cityId?: string; postOfficeId?: string; createdAt: string };
+export type Invitation = InviteState & { id: string; token: string; inviterId: string; letterId: string; createdAt: string; claimedAt?: string; claimedByUserId?: string };
+export type MailLetter = { id: string; senderId: string; recipientId?: string; invitationId: string; recipientHintName: string; content: string; status: "PENDING_INVITE" | "DELIVERED"; wordCount: number; senderPostOfficeId?: string; recipientPostOfficeId?: string; createdAt: string; deliveredAt?: string };
+type Store = { users: Record<string, MailUser>; invitations: Invitation[]; letters: MailLetter[]; relationships: ReturnType<typeof createConnectedRelationship>[] };
+const emptyStore = (): Store => ({ users: {}, invitations: [], letters: [], relationships: [] });
+function directory() { return process.env.MAIL_DATA_DIR || path.join(process.cwd(), "data/mail"); }
+// A single snapshot makes invitation, letter and relationship changes atomic. Single-process MVP.
+export async function loadMailStore(): Promise<Store> {
+  try { return JSON.parse(await readFile(path.join(directory(), "mail.json"), "utf8")); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyStore(); throw error; }
+}
+let queue: Promise<unknown> = Promise.resolve();
+function update<T>(fn: (store: Store) => T | Promise<T>): Promise<T> {
+  const task = queue.then(async () => {
+    const store = await loadMailStore();
+    const result = await fn(store);
+    await mkdir(directory(), { recursive: true });
+    const temporary = path.join(directory(), `${randomUUID()}.tmp`);
+    await writeFile(temporary, JSON.stringify(store, null, 2), { mode: 0o600 });
+    await rename(temporary, path.join(directory(), "mail.json"));
+    return result;
+  });
+  queue = task.catch(() => { });
+  return task;
+}
+export function registerMailUser(user: { id?: string; name: string; publicId?: string; cityId?: string; postOfficeId?: string }) {
+  return update(async (store) => {
+    const id = user.id || `c${randomUUID().replaceAll("-", "")}`;
+    const previous = store.users[id];
+    let publicId = previous?.publicId || user.publicId;
+    if (!publicId || Object.values(store.users).some(u => u.publicId === publicId && u.id !== id)) {
+      publicId = await allocatePublicId(candidate => Object.values(store.users).some(u => u.publicId === candidate));
+    }
+    const registered: MailUser = { ...user, id, publicId, createdAt: previous?.createdAt || new Date().toISOString() };
+    store.users[id] = registered;
+    return registered;
+  });
+}
+export async function getInvitationByToken(token: string) {
+  const store = await loadMailStore();
+  const invitation = store.invitations.find(i => i.token === token);
+  return invitation ? { invitation, letter: store.letters.find(l => l.id === invitation.letterId)!, inviter: store.users[invitation.inviterId] } : null;
+}
+export function createInvitationWithLetter(user: MailUser, input: { recipientHintName: string; content: string; passphrase?: string; expiresInDays: number }) {
+  return update(store => {
+    const now = new Date();
+    const invitation: Invitation = { id: randomUUID(), token: generateInviteToken(), inviterId: user.id, letterId: randomUUID(), recipientHintName: input.recipientHintName, status: "PENDING", createdAt: now.toISOString(), expiresAt: new Date(now.getTime() + input.expiresInDays * DEFAULT_INVITE_TTL_MS / 7).toISOString(), passphraseHash: input.passphrase ? hashPassphrase(input.passphrase) : null };
+    store.invitations.push(invitation);
+    store.letters.push({ id: invitation.letterId, senderId: user.id, invitationId: invitation.id, recipientHintName: input.recipientHintName, content: input.content, status: "PENDING_INVITE", wordCount: Array.from(input.content).length, senderPostOfficeId: user.postOfficeId, createdAt: now.toISOString() });
+    return invitation;
+  });
+}
+export function claimInvitation(token: string, user: MailUser, passphrase: string, choice: "accept" | "block") {
+  return update(store => {
+    const invitation = store.invitations.find(i => i.token === token);
+    if (!invitation) return { ok: false as const, reason: "missing" };
+    if (invitation.inviterId === user.id) return { ok: false as const, reason: "self" };
+    const now = new Date();
+    const result = claimInviteState(invitation, now, passphrase, choice);
+    if (!result.ok) return result;
+    const relationship = createConnectedRelationship(invitation.inviterId, user.id, invitation.id, now);
+    const existing = store.relationships.find(r => r.userAId === relationship.userAId && r.userBId === relationship.userBId);
+    if (choice === "accept" && existing?.status === "BLOCKED") return { ok: false as const, reason: "blocked" };
+    invitation.status = result.status;
+    invitation.claimedByUserId = user.id;
+    invitation.claimedAt = now.toISOString();
+    relationship.status = choice === "block" ? "BLOCKED" : "CONNECTED";
+    if (existing) Object.assign(existing, { status: relationship.status, updatedAt: now.toISOString() });
+    else store.relationships.push(relationship);
+    if (choice === "accept") {
+      const letter = store.letters.find(l => l.id === invitation.letterId)!;
+      Object.assign(letter, { recipientId: user.id, recipientPostOfficeId: user.postOfficeId, status: "DELIVERED", deliveredAt: now.toISOString() });
+    }
+    return { ok: true as const, letterId: invitation.letterId };
+  });
+}
+export async function listRelationshipsForUser(userId: string) {
+  const store = await loadMailStore();
+  return store.relationships.filter(r => r.status === "CONNECTED" && (r.userAId === userId || r.userBId === userId)).map(r => ({ ...r, contact: store.users[r.userAId === userId ? r.userBId : r.userAId] }));
+}

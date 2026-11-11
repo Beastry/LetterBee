@@ -1,0 +1,33 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { claimInvitation, createInvitationWithLetter, getInvitationByToken, listRelationshipsForUser, loadMailStore, registerMailUser } from "./mail-store";
+let directory: string;
+beforeEach(async () => { directory = await mkdtemp(path.join(tmpdir(), "zqc-mail-test-")); vi.stubEnv("MAIL_DATA_DIR", directory); });
+afterEach(async () => { vi.unstubAllEnvs(); await rm(directory, { recursive: true, force: true }); });
+it("口令校验、并发认领、双方通信簿与送达持久化", async () => {
+  const a = await registerMailUser({ name: "寄信人" });
+  const b = await registerMailUser({ name: "收信人", postOfficeId: "office" });
+  const c = await registerMailUser({ name: "其他人" });
+  expect((await registerMailUser(b)).publicId).toBe(b.publicId);
+  const invitation = await createInvitationWithLetter(a, { recipientHintName: "小林", content: "见字如面", passphrase: "秋天", expiresInDays: 7 });
+  expect((await claimInvitation(invitation.token, b, "错了", "accept")).ok).toBe(false);
+  expect((await getInvitationByToken(invitation.token))?.invitation.status).toBe("PENDING");
+  const results = await Promise.all([claimInvitation(invitation.token, b, "秋天", "accept"), claimInvitation(invitation.token, c, "秋天", "accept")]);
+  expect(results.map(r => r.ok)).toEqual([true, false]);
+  expect((await listRelationshipsForUser(a.id))[0].contact.id).toBe(b.id);
+  expect((await listRelationshipsForUser(b.id))[0].contact.id).toBe(a.id);
+  expect((await loadMailStore()).letters[0]).toMatchObject({ recipientId: b.id, recipientPostOfficeId: "office", status: "DELIVERED" });
+});
+it("拒收不交付信件，后续邀请无法越过屏蔽", async () => {
+  const a = await registerMailUser({ name: "甲" }); const b = await registerMailUser({ name: "乙" });
+  const input = { recipientHintName: "乙", content: "你好", expiresInDays: 7 };
+  const first = await createInvitationWithLetter(a, input);
+  expect((await claimInvitation(first.token, a, "", "accept")).ok).toBe(false);
+  expect((await claimInvitation(first.token, b, "", "block")).ok).toBe(true);
+  expect((await loadMailStore()).letters[0].recipientId).toBeUndefined();
+  expect(await listRelationshipsForUser(a.id)).toEqual([]);
+  const second = await createInvitationWithLetter(a, input);
+  expect(await claimInvitation(second.token, b, "", "accept")).toMatchObject({ ok: false, reason: "blocked" });
+});

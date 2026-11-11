@@ -113,6 +113,8 @@ model Invitation {
   claimedByUserId   String?
   createdAt         DateTime         @default(now())
   claimedAt         DateTime?
+  expiresAt         DateTime?
+  passphraseHash    String?
 
   inviter User    @relation(fields: [inviterId], references: [id], onDelete: Cascade)
   letter  Letter?

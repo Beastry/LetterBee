@@ -4,7 +4,7 @@ import { loginAction } from "../actions";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const params = await searchParams;
 
@@ -22,6 +22,7 @@ export default async function LoginPage({
           </p>
 
           <form action={loginAction} className="mt-8 space-y-5">
+            <input type="hidden" name="next" value={params.next ?? ""} />
             <label className="block">
               <span className="text-sm font-medium text-[#5d4329]">昵称</span>
               <input
