@@ -433,3 +433,7 @@ MVP 不需要真的跑物流系统。
 骨架与信笺模块已在仓内演进；**下一阶段开发重点是 Phase 3：用户 ID + 邀请认领闭环**（见上文验收标准）。
 
 实施前先把 Prisma `User.publicId`、Invitation 过期/口令字段与 `/invite/[token]` 流程对齐本文与[收件人关系流程](recipient-relationship-flow.md)。
+
+## 许可证
+
+本仓库第一方材料以 GPL-3.0-only 授权，见 [LICENSE](../LICENSE)。
