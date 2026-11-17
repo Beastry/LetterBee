@@ -1,3 +1,4 @@
+import { cookieOptions } from "@/lib/app-path";
 import { NextResponse } from "next/server";
 import {
   GATE_WINDOW_MS,
@@ -65,9 +66,7 @@ export async function POST(
     });
     const response = NextResponse.json({ ok: true });
     response.cookies.set(letterSessionCookieName(slug), token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
+      ...cookieOptions(),
       maxAge: 12 * 60 * 60,
       secure: process.env.NODE_ENV === "production",
     });

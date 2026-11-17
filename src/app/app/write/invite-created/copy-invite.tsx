@@ -1,10 +1,11 @@
 "use client";
+import { appPath } from "@/lib/app-path";
 import { useState } from "react";
 export function CopyInvite({ path }: { path: string }) {
   const [message, setMessage] = useState("");
-  const [url, setUrl] = useState(path);
+  const [url, setUrl] = useState(appPath(path));
   async function copy() {
-    const full = new URL(path, window.location.origin).href;
+    const full = new URL(appPath(path), window.location.origin).href;
     setUrl(full);
     try { await navigator.clipboard.writeText(full); setMessage("已复制，把信捎给对方吧。"); }
     catch { setMessage("请选中链接手动复制。"); }

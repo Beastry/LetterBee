@@ -50,3 +50,14 @@ next-env.d.ts
 # Local invitation mail store
 /data/mail/*.json
 /data/mail/*.tmp
+
+# Worker build output and local secrets
+/dist/
+.vinext/
+.wrangler/
+.dev.vars*
+.env*
+!.env.example
+
+# Private user-owned rich-mail attachments (never public/static assets)
+/data/mail-media/

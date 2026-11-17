@@ -27,7 +27,12 @@ export default function RootLayout({
       lang="zh-CN"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <aside role="status" style={{ padding: "10px 20px", textAlign: "center", background: "#fff0c2", color: "#643f12", fontSize: 14, borderBottom: "1px solid #d9bc73" }}>
+          功能预览版 · 数据可能延迟或丢失，请勿存放真实私信、个人资料或其他敏感内容。
+        </aside>
+        {children}
+      </body>
     </html>
   );
 }

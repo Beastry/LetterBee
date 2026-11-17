@@ -1,10 +1,15 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { appRedirect as redirect } from "@/lib/app-redirect";
 import { safeNextPath } from "@/lib/navigation";
 import { cityOptions } from "@/lib/cities";
 import { validateProfileSelection } from "@/lib/profile";
-import { clearCurrentUser, ensurePublicId, getCurrentUser, setCurrentUser } from "@/lib/session";
+import {
+  clearCurrentUser,
+  ensurePublicId,
+  getCurrentUser,
+  setCurrentUser,
+} from "@/lib/session";
 
 export async function loginAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -14,9 +19,8 @@ export async function loginAction(formData: FormData) {
     redirect(`/login?error=missing-name&next=${encodeURIComponent(next)}`);
   }
   const existing = await getCurrentUser();
-  await ensurePublicId({ ...(existing ?? {}), name });
+  await setCurrentUser({ ...(existing ?? {}), name });
   redirect(next);
-
 }
 
 export async function saveProfileAction(formData: FormData) {

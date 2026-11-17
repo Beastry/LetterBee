@@ -1,4 +1,5 @@
 "use client";
+import { appPath } from "@/lib/app-path";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { BgmPlaylist } from "../types";
@@ -94,9 +95,9 @@ export const BgmPlayer = forwardRef<
       return;
     }
 
-    const absolute = new URL(track.src, window.location.origin).href;
+    const absolute = new URL(appPath(track.src), window.location.origin).href;
     if (audio.src !== absolute) {
-      audio.src = track.src;
+      audio.src = appPath(track.src);
     }
     if (fadeIn) {
       audio.currentTime = 0;
