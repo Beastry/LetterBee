@@ -27,7 +27,7 @@ Wrangler 是本项目明确的部署方式，使用官方支持的 legacy Wrangl
 
 本地依旧 `data/mail/mail.json`，原子文件替换。Worker 显式选择 `MAIL_STORAGE_DRIVER=kv`，绑定 `MAIL_STORE`，使用 `mail:v1` 单 JSON 快照。缺少云端绑定会直接报错，绝不静默回退临时文件。
 
-Wrangler 配置不含假 namespace ID：首次授权部署可自动创建 namespace（Worker 名前缀）。如需固定名称 `letterbee-mail`，先在该账号创建 namespace，并把真实、非秘密 ID 写到源 `wrangler.jsonc` 的 MAIL_STORE 绑定后重新构建；不要只修改 dist 的生成配置。
+已通过授权 Cloudflare 连接器创建专用 namespace `letterbee-mail`，ID `d122d1cfd8b7430a8b4d18220d142185`，写入源 `wrangler.jsonc`。该 namespace 目前未绑定已部署 Worker，应用数据未迁入。不要只修改 dist 的生成配置。
 
 信笺模块的云端文档也存 KV（`letter:<slug>`），样例 JSON 打包入 Worker；示例媒体由独立应用自身 assets 提供，不碰官网。
 **云端预览暂不支持媒体上传**：明确返回提示，避免把上传写进 Worker 的临时文件系统。正式媒体上传需要对象存储和受控分发，另行实现。
@@ -78,8 +78,10 @@ pnpm exec wrangler secret put LETTER_SESSION_SECRET --config dist/server/wrangle
 
 源配置暂不含 routes，因此不会修改官网路由。zone 为 `abd87577fde0182b6c9ca431725a2865`。仅可绑定这两个 pattern 到 letterbee：
 
-- `beastry.app/letterbee*`
-- `www.beastry.app/letterbee*`
+- `beastry.app/letterbee`
+- `beastry.app/letterbee/*`
+
+不使用更宽的 `/letterbee*`。需要 www 时另行配置同样两个精确范围。
 
 **绝不添加覆盖官网全部路径的 wildcard route，不修改 Pages 项目/官网 DNS。** 可由已授权 Cloudflare MCP 添加以上精确路由。若路由由 MCP 管理，应继续保持 wrangler 无 routes；以后切换到 Wrangler 管理时先核对已存在配置，避免覆盖。
 
@@ -87,4 +89,6 @@ pnpm exec wrangler secret put LETTER_SESSION_SECRET --config dist/server/wrangle
 
 52 个单测通过；TypeScript 通过（先生成 Prisma Client）；Next 构建、vinext Worker 构建和 Wrangler dry-run 通过。
 本地 workerd 实测首页/登录/样例/静态资源、匿名 307、Server Action 303、Secure scoped signed Cookie、KV 登记、样例口令、带口令邀请、认领、通信簿及按公开号发送。
-未执行远程部署：CLI `wrangler whoami` 显示未认证，环境没有 CLOUDFLARE_API_TOKEN。未创建远程 KV、未设置远程 secret、未绑定 zone route。
+CLI `wrangler whoami` 显示未认证，环境没有 CLOUDFLARE_API_TOKEN。随后改用已授权 Cloudflare MCP：创建专用 KV 成功，准备了 Worker 与 49 个 assets 的官方直接上传 multipart 请求，并通过连接器执行。上传执行返回 `Unexpected token 'U', "Unauthorized" is not valid JSON`，未拿到成功部署结果。只读复核 Worker `letterbee` 不存在、zone routes 仍为空；没有再换凭据、创建账号 token 或通过 CLI 绕过。
+
+页面已增加醒目的“功能预览版／请勿存放真实私信、个人资料或敏感内容”横幅。会话 secret 仅生成在 box 受保护文件，未进入 Git 或回显；远端 secret 未成功设置。官方静态站根路径仍为 HTTP 200，`/letterbee` 尚未上线。官方流程参考：https://developers.cloudflare.com/workers/static-assets/direct-upload/ 。
