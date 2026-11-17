@@ -58,3 +58,6 @@ next-env.d.ts
 .dev.vars*
 .env*
 !.env.example
+
+# Private user-owned rich-mail attachments (never public/static assets)
+/data/mail-media/
