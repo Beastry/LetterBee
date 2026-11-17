@@ -1,4 +1,4 @@
-# 写信 / 读信代码迁移（本地待审阅）
+# 写信 / 读信代码迁移
 
 ## 范围与出处
 
@@ -6,7 +6,7 @@
 - 目标：LetterBee 独立 Next.js 应用；从 `b438d86` 新开 `feat/full-letter-experience`，保留部署适配提交 `83964a4` / `b438d86`。
 - 不是 iframe、静态镜像或样例导入。真实入口为 `/letterbee/app/write`，真实收/寄信入口为 `/letterbee/app/letters/:id`。
 - 已尝试既有 Codex/sub2api CLI；当前执行环境缺 `OPENAI_API_KEY`，因此按本次授权本地实现，没有读取其他 bot 的凭据。
-- **未部署、未 push、未开 PR、未 merge；当前公网预览仍是原版本。**
+- **2026-11-17（Asia/Shanghai）经“推送部署”授权，feature 分支已正常 push，新体验已部署到现有 LetterBee Worker；未开 PR、未 merge。** 可执行代码提交 `b983ca6`，详见 [发布与远程 HTTP 回归记录](release-2026-11-17.md)。
 
 ## 源 → 目标 → 真实流程
 
@@ -34,15 +34,15 @@
 - 富信邀请认领前只显示元信息，完整信纸/媒体在认领后按账号授权打开。原纯文字信兼容原展示。收/寄记录可从 `/app` 进入。
 - JSON 白名单、800字总正文/物件文字限制、Origin 校验、大小限制、MIME signature 检查；不接受外站/生日站 URL 或跨草稿媒体。附件必须是本草稿上传的对象。
 - 附件每次读取核对本人草稿或已投递的收/寄身份及服务端时间锁；`private,no-store` / `nosniff`，支持音视频 byte range。未把用户文件放进 public/static。
-- Cookie 继续使用已有签名会话，生产 path `/letterbee` + Secure/HttpOnly/SameSite=Lax；删除 path 不变。本次未触碰 secret、域名路由或账号权限。
+- Cookie 继续使用已有签名会话，生产 path `/letterbee` + Secure/HttpOnly/SameSite=Lax；删除 path 不变。本次保留原有 secret；发布时用 Wrangler 显式保持四条既有精确路径路由，未扩大到官网其他路径、未调整账号权限。
 
-## 独立媒体存储（没有开通资源）
+## 独立媒体存储（已绑定私有 R2）
 
 - 本地：`data/mail-media/`（可用 `MAIL_MEDIA_DIR` 覆盖），文件0600、目录0700，已 gitignore；媒体元信息及草稿在原 `data/mail/mail.json`。
 - 云端：`MAIL_STORAGE_DRIVER=kv` 时只接受可选绑定 **`LETTER_MEDIA`（R2Bucket）**；对象键 `v1/<随机UUID>`，不设公共 bucket URL、不需要浏览器 CORS/任何新凭据。
-- **尚需 Neil 批准开通/绑定 LetterBee 自己的私有 R2 bucket（建议 `letterbee-media`）**。本次没有创建 bucket、修改 Worker/资源/路由；没有借生日站 bucket。当前 wrangler 配置不自动添加/开通 R2。
-- 审阅批准后才可在源 `wrangler.jsonc` 添加 `r2_buckets: [{ binding: "LETTER_MEDIA", bucket_name: "letterbee-media" }]` 并 regenerate types/build/deploy。参考 https://developers.cloudflare.com/r2/api/workers/workers-api-usage/ 。
-- 缺绑定会明确显示不可上传，服务端503且不写回 fs。文字、排版、程序贴纸/封缄仍可用；不能说当前云端完整媒体已经可用。
+- 经后续“推送部署”授权，已查重后创建 LetterBee 专用私有 bucket **`letterbee-media`** 并绑定 `LETTER_MEDIA`。R2 managed public domain 关闭、自定义域名为空；没有借生日站 bucket、开公共访问或变更付费订阅/plan。
+- `wrangler.jsonc` 已加入 `r2_buckets: [{ binding: "LETTER_MEDIA", bucket_name: "letterbee-media" }]`，已重新生成类型并完成 build/dry-run/deploy。参考 https://developers.cloudflare.com/r2/api/workers/workers-api-usage/ 。
+- 远程 PNG / 静音 WAV 上传实际返回201，认领后附件读取200、音频 range206；匿名401、非本人且未认领404。缺绑定环境仍明确显示不可上传，服务端503且不写回 fs。设备录制与浏览器播放尚待人工验收。
 
 ## 不迁项目 / 原因
 
@@ -57,7 +57,7 @@
 
 - 自动化：`pnpm test`（67 tests / 20 files）；包含真实 route handlers 的新建/上传/保存/冲突/邀请寄出/认领/收信/附件 range，已通邮 publicId/联系人、拒收、所有11类物件快照、跨草稿/跨用户访问、旧快照兼容、时间锁、音乐裁切/duck/交叉淡化/随机/后台暂停/释放及源几何排版。
 - `pnpm exec tsc --noEmit`、`pnpm lint`、`pnpm build`、`pnpm build:cloudflare`、`wrangler deploy --dry-run --config dist/server/wrangler.json`：本轮均退出0。dry-run 只检查打包，不代表远程资源或设备兼容通过。
-- 本地浏览器地址：`http://localhost:3025/letterbee/app/write`（本轮已启动，临时独立数据与随机会话密钥；请使用 localhost 而非 127.0.0.1，避免 Next dev 的 canonical-origin 检查差异）；不自动更新公网。若自行启动：`NEXT_PUBLIC_BASE_PATH=/letterbee pnpm dev --port 3025`。
+- 本地浏览器地址：`http://localhost:3025/letterbee/app/write`（先前本地迁移验收所用地址；服务当前是否运行需另查。请使用 localhost 而非 127.0.0.1，避免 Next dev 的 canonical-origin 检查差异）。当前公网验收见发布记录。若自行启动：`NEXT_PUBLIC_BASE_PATH=/letterbee pnpm dev --port 3025`。
 - 请由父 agent 安排浏览器：甲/乙两个独立会话，以中性昵称登记；甲建草稿→输入段落/隐藏段→拖放11类物件/媒体→录音拍照→改封缄/配乐→保存刷新→预览；甲生成邀请，乙核对口令认领并拆封；乙从收信箱读图/音/视频、发现隐藏段，检查未来段/物件；甲验证寄出后不可编辑；乙回信并验证通信簿/publicId；再检查手机双指/Shift/键盘与 reduced-motion。
 - **浏览器设备权限、iOS/Safari 自动播放、相机/录音/HEIC、手势与视觉/灯箱焦点行为仍需人工设备验收**；自动化通过不等于这些已验收。
 
@@ -65,7 +65,7 @@
 
 `mail:v1` 仍是 Cloudflare KV **单 JSON 快照**：最终一致性、每键写入频率/容量、跨 isolate 并发丢更新风险未解决；revision/本地串行队列不是分布式锁。图片文件独立存 R2 并不能解决信件/草稿元数据的一致性。现有登录仍是开发昵称会话、不是正式身份认证。尚无附件垃圾回收/长期配额、恶意内容扫描或端到端加密；废弃/替换附件仍占本草稿限额。上线真实私信前必须设计强一致存储和正式认证/隐私策略。页面继续明确标为预览，不可存真实私信或个人媒体。
 
-### 本轮实际验证记录
+### 初次本地迁移阶段验证记录（发布前）
 
 | 检查                     | 结果                                                                                                                                                                                                                                         |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,6 +78,6 @@
 | 真实 localhost HTTP 回归 | 首页200、17个引用静态资源均200；匿名写信307→带prefix登录；真实登录action303+scoped cookie；编辑器SSR200、私有上传201、保存200；真实邀请认领action303→带prefix读信200，未来正文未泄漏；音视频range路径206、已寄草稿修改409；通信簿图文回信200 |
 | 源与旧部署提交           | 源7771c20的 tracked diff为空，包含其他bot未跟踪文件的 status 与开工前一致；83964a4/b438d86仍是新分支祖先                                                                                                                                     |
 
-真实 HTTP 驱动与脱敏结果在 `/workspace/letterbee-migration/local-http-regression.mjs`、`local-preview/http-results.json`；仅日志/临时 fixture 留在 box，不加入仓库。没有浏览器视觉或设备权限验收，也没有本轮公网部署验收。
+真实 HTTP 驱动与脱敏结果在 `/workspace/letterbee-migration/local-http-regression.mjs`、`local-preview/http-results.json`；仅日志/临时 fixture 留在 box，不加入仓库。没有浏览器视觉或设备权限验收；后续公网部署与 HTTP 验收见发布记录。
 
 迁移后预览配额为60段、80个 journal 物件、20首配乐；源 journal 上限200。本轮基于800字产品限制与 KV 单快照收紧物件数量；如必须保留原容量，应在切强一致存储时一起评审。外部音乐 iframe 与跨草稿公共贴纸库没有移入，需要 Neil 决定是否另做通用且有授权边界的方案。
