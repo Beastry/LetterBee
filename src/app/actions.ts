@@ -14,7 +14,7 @@ export async function loginAction(formData: FormData) {
     redirect(`/login?error=missing-name&next=${encodeURIComponent(next)}`);
   }
   const existing = await getCurrentUser();
-  await ensurePublicId({ ...(existing ?? {}), name });
+  await setCurrentUser({ ...(existing ?? {}), name });
   redirect(next);
 
 }

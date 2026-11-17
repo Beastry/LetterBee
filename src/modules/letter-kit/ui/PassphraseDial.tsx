@@ -1,4 +1,5 @@
 "use client";
+import { appPath } from "@/lib/app-path";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -39,7 +40,7 @@ export function PassphraseDial({
 
     try {
       const passphrase = code.padEnd(dials, characters[0] ?? "0").slice(0, dials);
-      const response = await fetch(`/api/letters/${slug}/gate`, {
+      const response = await fetch(appPath(`/api/letters/${slug}/gate`), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ passphrase }),

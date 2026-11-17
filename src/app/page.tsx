@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { appPath } from "@/lib/app-path";
 
 const features = [
   "写信时文字实时落在信纸上，字数有限，表达更克制。",
@@ -25,7 +26,7 @@ export default function Home() {
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a
-                href="/login"
+                href={appPath("/login")}
                 className="rounded-full bg-[#6f432a] px-6 py-3 text-center text-base font-medium text-[#fff8ec] shadow-sm transition hover:bg-[#56331f]"
               >
                 写第一封信
@@ -37,7 +38,7 @@ export default function Home() {
                 拆开样例信
               </Link>
               <a
-                href="/app/map"
+                href={appPath("/app/map")}
                 className="rounded-full border border-[#9b7a52] px-6 py-3 text-center text-base font-medium text-[#5d4329] transition hover:bg-[#fff8ec]"
               >
                 查看邮路地图

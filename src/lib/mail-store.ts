@@ -1,5 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { mailSnapshotStorage } from "./persistence";
 import { randomUUID } from "node:crypto";
 import { allocatePublicId } from "./public-id";
 import { claimInviteState, DEFAULT_INVITE_TTL_MS, generateInviteToken, hashPassphrase, type InviteState } from "./invite";
@@ -10,21 +9,19 @@ export type Invitation = InviteState & { id: string; token: string; inviterId: s
 export type MailLetter = { id: string; senderId: string; recipientId?: string; invitationId?: string; recipientHintName: string; content: string; status: "PENDING_INVITE" | "POSTED" | "DELIVERED"; wordCount: number; senderPostOfficeId?: string; recipientPostOfficeId?: string; createdAt: string; sentAt?: string; deliveredAt?: string };
 type Store = { users: Record<string, MailUser>; invitations: Invitation[]; letters: MailLetter[]; relationships: ReturnType<typeof createConnectedRelationship>[] };
 const emptyStore = (): Store => ({ users: {}, invitations: [], letters: [], relationships: [] });
-function directory() { return process.env.MAIL_DATA_DIR || path.join(process.cwd(), "data/mail"); }
-// A single snapshot makes invitation, letter and relationship changes atomic. Single-process MVP.
+// Local atomic file snapshot; KV snapshot is eventually consistent (preview only).
 export async function loadMailStore(): Promise<Store> {
-  try { return JSON.parse(await readFile(path.join(directory(), "mail.json"), "utf8")); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyStore(); throw error; }
+  const raw = await (await mailSnapshotStorage()).read();
+  return raw === null ? emptyStore() : JSON.parse(raw);
 }
 let queue: Promise<unknown> = Promise.resolve();
 function update<T>(fn: (store: Store) => T | Promise<T>): Promise<T> {
   const task = queue.then(async () => {
     const store = await loadMailStore();
+    const before = JSON.stringify(store);
     const result = await fn(store);
-    await mkdir(directory(), { recursive: true });
-    const temporary = path.join(directory(), `${randomUUID()}.tmp`);
-    await writeFile(temporary, JSON.stringify(store, null, 2), { mode: 0o600 });
-    await rename(temporary, path.join(directory(), "mail.json"));
+    // Reading a profile must not consume a KV write or hit its per-key write limit.
+    if (JSON.stringify(store) !== before) await (await mailSnapshotStorage()).write(JSON.stringify(store, null, 2));
     return result;
   });
   queue = task.catch(() => { });

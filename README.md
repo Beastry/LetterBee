@@ -19,6 +19,7 @@ pnpm test
 
 ## 文档
 
+- [Cloudflare 独立 Worker 部署与预览](docs/cloudflare-deployment.md)
 - [产品概念](docs/product-concept.md)
 - [信笺模块：开封、按日解锁与编辑](docs/letter-kit.md)
 - [上线前关键问题](docs/product-open-questions.md)

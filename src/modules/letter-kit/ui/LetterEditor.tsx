@@ -1,4 +1,5 @@
 "use client";
+import { appPath } from "@/lib/app-path";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -10,7 +11,7 @@ import { LetterExperience } from "./LetterExperience";
 async function uploadMedia(slug: string, file: File): Promise<string> {
   const body = new FormData();
   body.set("file", file);
-  const response = await fetch(`/api/letters/${slug}/media`, { method: "POST", body });
+  const response = await fetch(appPath(`/api/letters/${slug}/media`), { method: "POST", body });
   const payload = (await response.json()) as { url?: string; error?: string };
 
   if (!response.ok || !payload.url) {
@@ -66,7 +67,7 @@ export function LetterEditor({ initial, today }: { initial: LetterDocument; toda
     setStatus("");
 
     try {
-      const response = await fetch(`/api/letters/${draft.slug}`, {
+      const response = await fetch(appPath(`/api/letters/${draft.slug}`), {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

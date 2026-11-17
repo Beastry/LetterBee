@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "letterbee",
+  "main": "vinext/server/fetch-handler",
+  "account_id": "6d03d35ec17b9be9e4febd16c6799b50",
+  "compatibility_date": "2026-11-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  // No zone routes here. Only /letterbee* may later be attached to the existing Pages domain.
+  "assets": { "binding": "ASSETS", "directory": "./dist/client", "html_handling": "none", "not_found_handling": "none", "run_worker_first": ["/*", "!/_next/static/*", "!/*/_next/static/*"] },
+  "vars": { "MAIL_STORAGE_DRIVER": "kv", "NEXT_PUBLIC_BASE_PATH": "/letterbee" },
+  // Wrangler automatically provisions a namespace when no id is supplied on first authorized deploy.
+  "kv_namespaces": [{ "binding": "MAIL_STORE" }]
+}

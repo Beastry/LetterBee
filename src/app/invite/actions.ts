@@ -1,4 +1,5 @@
 "use server";
+import { appPath } from "@/lib/app-path";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensurePublicId, getCurrentUser } from "@/lib/session";
@@ -19,7 +20,7 @@ export async function verifyInvitePassphraseAction(form: FormData) {
   }
   // Store the salted verifier, never the plaintext. It is HttpOnly and token-scoped.
   const jar = await cookies();
-  jar.set(`invite_${token}`, record.invitation.passphraseHash || "", { httpOnly: true, sameSite: "lax", path: `/invite/${token}`, maxAge: 3600, secure: process.env.NODE_ENV === "production" });
+  jar.set(`invite_${token}`, record.invitation.passphraseHash || "", { httpOnly: true, sameSite: "lax", path: appPath(`/invite/${token}`), maxAge: 3600, secure: process.env.NODE_ENV === "production" });
   redirect(`/invite/${token}`);
 }
 export async function claimInviteAction(form: FormData) {

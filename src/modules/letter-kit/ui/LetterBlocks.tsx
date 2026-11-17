@@ -1,4 +1,5 @@
 "use client";
+import { appPath } from "@/lib/app-path";
 
 import { useEffect, useRef, useState } from "react";
 import { BLOCK_TYPE_LABEL, isLockedStub, type FilteredBlock, type FilteredParagraph } from "../types";
@@ -159,7 +160,7 @@ export function LetterBlocks({
                     ) : item.src ? (
                       <figure key={item.id}>
                         {/* eslint-disable-next-line @next/next/no-img-element -- letter media is chosen at runtime */}
-                        <img src={item.src} alt={item.alt} />
+                        <img src={appPath(item.src)} alt={item.alt} />
                         {item.caption ? <figcaption>{item.caption}</figcaption> : null}
                       </figure>
                     ) : (
@@ -179,7 +180,7 @@ export function LetterBlocks({
                 {block.src ? (
                   <div className="lk-player">
                     <audio className="lk-audio" controls preload="none" {...blockMediaHandlers(block.id, setDucked)}>
-                      <source src={block.src} />
+                      <source src={appPath(block.src)} />
                     </audio>
                   </div>
                 ) : (
@@ -198,10 +199,10 @@ export function LetterBlocks({
                       controls
                       playsInline
                       preload="metadata"
-                      poster={block.poster || undefined}
+                      poster={block.poster ? appPath(block.poster) : undefined}
                       {...blockMediaHandlers(block.id, setDucked)}
                     >
-                      <source src={block.src} />
+                      <source src={appPath(block.src)} />
                     </video>
                   </figure>
                 ) : (

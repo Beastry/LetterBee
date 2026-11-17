@@ -1,3 +1,5 @@
+import sampleDocument from "../../../data/letters/sample.json";
+import { cloudMailKV } from "@/lib/persistence";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -46,6 +48,12 @@ export function letterFilePath(slug: string): string {
 }
 
 export async function readLetter(slug: string): Promise<LetterDocument | null> {
+  if (!isValidSlug(slug)) throw new LetterValidationError("信笺编号无效");
+  const kv = await cloudMailKV();
+  if (kv) {
+    const raw = await kv.get(`letter:${slug}`, "text");
+    return raw ? parseLetterDocument(JSON.parse(raw), slug) : slug === "sample" ? parseLetterDocument(sampleDocument, slug) : null;
+  }
   let raw: string;
 
   try {
@@ -62,6 +70,8 @@ export async function readLetter(slug: string): Promise<LetterDocument | null> {
 
 export async function writeLetter(document: LetterDocument): Promise<void> {
   const parsed = parseLetterDocument(document, document.slug);
+  const kv = await cloudMailKV();
+  if (kv) { await kv.put(`letter:${parsed.slug}`, JSON.stringify(parsed)); return; }
   const file = letterFilePath(parsed.slug);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
@@ -91,6 +101,10 @@ export async function saveLetterMedia({
   }
 
   const filename = `${randomUUID()}${extension}`;
+  if (await cloudMailKV()) {
+    // Binary uploads need object storage + authenticated delivery, not a public filesystem.
+    throw new LetterValidationError("云端预览暂不支持上传媒体，请先使用示例素材。");
+  }
   const directory = path.join(letterMediaDir(), slug, "uploads");
   const file = path.join(directory, filename);
   assertInside(letterMediaDir(), file);
