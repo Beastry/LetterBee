@@ -372,7 +372,11 @@ export function createJournalLayout() {
       }
       let rest = String(p.text || ""),
         first = true;
-      if (!rest && opt.edit) y += L;
+      if (!rest && opt.edit) {
+        bands.push({ pi, y, h: L, x: opt.indent || 0, w: W - (opt.indent || 0) });
+        y += L;
+        continue;
+      }
       while (rest.length) {
         let intervals = freeIntervals(y, L);
         intervals = intervals.filter((v) => v[1] - v[0] >= Math.min(minW, W));
