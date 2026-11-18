@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -12,6 +13,7 @@ import { appearance } from "./appearance";
 import { appPath } from "@/lib/app-path";
 import { createJournalLayout, type Box } from "./layout";
 import type { JournalItem, RichDocument } from "./model";
+import { PlainField } from "./PlainField";
 import "./rich.css";
 const JL = createJournalLayout();
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
@@ -23,7 +25,17 @@ type Props = {
   onPatch?: (id: string, patch: Partial<JournalItem>) => void;
   onGestureStart?: () => void;
   onDelete?: (id: string) => void;
+  onEditObject?: (id: string) => void;
   onParagraphEdit?: (id: string, text: string) => void;
+  onField?: (
+    key: "title" | "to" | "from" | "postmark" | "dateline" | "salutation" | "signoff",
+    value: string,
+  ) => void;
+  onSplitParagraph?: (id: string, at: number, rest: string) => string | void;
+  onMergeParagraph?: (id: string) => void;
+  onDeleteParagraph?: (id: string) => void;
+  onAddParagraph?: () => void;
+  onHideParagraph?: (id: string, hidden: boolean, hv?: "speck" | "emboss" | "ink") => void;
   duck?: (id: string, on: boolean) => void;
 };
 export function RichPaper({
@@ -35,6 +47,13 @@ export function RichPaper({
   onGestureStart,
   onParagraphEdit,
   onDelete,
+  onEditObject,
+  onField,
+  onSplitParagraph,
+  onMergeParagraph,
+  onDeleteParagraph,
+  onAddParagraph,
+  onHideParagraph,
   duck,
 }: Props) {
   const inner = useRef<HTMLDivElement>(null),
@@ -44,7 +63,9 @@ export function RichPaper({
     [lightbox, setLightbox] = useState<string | null>(null),
     [easter, setEaster] = useState<string[]>([]),
     [typed, setTyped] = useState(0),
-    [editingParagraph, setEditingParagraph] = useState<string | null>(null);
+    [editingParagraph, setEditingParagraph] = useState<string | null>(null),
+    [hideFor, setHideFor] = useState<string | null>(null),
+    [armedDelete, setArmedDelete] = useState("");
   const gesture = useRef<{
     id: string;
     mode: string;
@@ -223,6 +244,26 @@ export function RichPaper({
       e.currentTarget.releasePointerCapture(e.pointerId);
     gesture.current = null;
   }
+  function ink(
+    it: JournalItem,
+    key: "heading" | "caption" | "text" | "sub",
+    label: string,
+    always = false,
+  ) {
+    const value = it[key];
+    if (edit && onPatch && (always || selected === it.id)) {
+      return (
+        <PlainField
+          multiline={key === "text" || key === "sub"}
+          value={value}
+          label={label}
+          placeholder={label}
+          onChange={(next) => onPatch(it.id, { [key]: next })}
+        />
+      );
+    }
+    return value;
+  }
   function renderItem(it: JournalItem) {
     switch (it.t) {
       case "photo":
@@ -240,13 +281,13 @@ export function RichPaper({
                 loading="lazy"
               />
             </button>
-            <figcaption>{it.caption}</figcaption>
+            <figcaption>{ink(it, "caption", "说明")}</figcaption>
           </figure>
         );
       case "voice":
         return (
           <div className="ji-voice">
-            <p>{it.caption || "一段语音"}</p>
+            <p>{ink(it, "caption", "说明") || "一段语音"}</p>
             <audio
               controls
               preload="none"
@@ -273,7 +314,7 @@ export function RichPaper({
               onPause={() => duck?.(it.id, false)}
               onEnded={() => duck?.(it.id, false)}
             />
-            <figcaption>{it.caption}</figcaption>
+            <figcaption>{ink(it, "caption", "说明")}</figcaption>
           </figure>
         );
       case "sticker":
@@ -291,14 +332,14 @@ export function RichPaper({
       case "stamp":
         return (
           <span className={`rich-stamp ji-stamp ji-stamp-${it.k || "post"}`}>
-            <strong>{it.text || "邮"}</strong>
+            <strong>{ink(it, "text", "邮戳文字") || "邮"}</strong>
           </span>
         );
       case "ticket":
         return (
           <div className="rich-ticket ji-ticket">
-            <strong>{it.text || "一张票根"}</strong>
-            <small>{it.sub}</small>
+            <strong>{ink(it, "text", "票根文字") || "一张票根"}</strong>
+            <small>{ink(it, "sub", "副文字")}</small>
           </div>
         );
       case "timeline":
@@ -317,17 +358,22 @@ export function RichPaper({
           </div>
         );
       case "hero":
+        return (
+          <div className="ji-hero">
+            <h3>{ink(it, "heading", "题头", true)}</h3>
+            <p>{ink(it, "sub", "副文字", true)}</p>
+          </div>
+        );
       case "ending":
         return (
-          <div className={`ji-${it.t}`}>
-            <h3>{it.heading}</h3>
-            <p>{it.text || it.sub}</p>
-            {it.t === "ending" &&
-              (it.src ? (
-                <img className="ji-wax" src={appPath(it.src)} alt="落款印章" />
-              ) : (
-                <i className="ji-wax" aria-hidden="true" />
-              ))}
+          <div className="ji-ending">
+            <h3>{ink(it, "heading", "题头")}</h3>
+            <p>{ink(it, "text", "结尾文字")}</p>
+            {it.src ? (
+              <img className="ji-wax" src={appPath(it.src)} alt="落款印章" />
+            ) : (
+              <i className="ji-wax" aria-hidden="true" />
+            )}
           </div>
         );
       case "easter":
@@ -374,7 +420,28 @@ export function RichPaper({
     >
       <section className="sec letter" data-journal="1">
       <div className="eyebrow lhead">
-        <h2 className="ltitle">{doc.title}</h2>
+        <h2 className="ltitle">
+          {edit && onField ? (
+            <PlainField
+              value={doc.title}
+              label="信的标题"
+              placeholder="这封信的标题"
+              onChange={(value) => onField("title", value)}
+            />
+          ) : (
+            doc.title
+          )}
+        </h2>
+        {edit && onField ? (
+          <p className="env-meta">
+            <span>致</span>
+            <PlainField value={doc.to} label="信封上写给谁" placeholder="收信人" onChange={(value) => onField("to", value)} />
+            <span>寄</span>
+            <PlainField value={doc.from} label="信封寄信人" placeholder="你的名字" onChange={(value) => onField("from", value)} />
+            <span>邮戳</span>
+            <PlainField value={doc.postmark} label="邮戳" placeholder="邮戳" onChange={(value) => onField("postmark", value)} />
+          </p>
+        ) : null}
       </div>
       {!edit && typed < bodyLength && !immediate && (
         <button type="button" className="wbtn" onClick={() => setTyped(bodyLength)}>
@@ -383,7 +450,18 @@ export function RichPaper({
       )}
       <div className="paper has-so">
       <div className="lsheet">
-      {doc.salutation ? <p className="salute">{doc.salutation}</p> : null}
+      {edit && onField ? (
+        <p className="salute">
+          <PlainField
+            value={doc.salutation}
+            label="称呼"
+            placeholder="见字如面："
+            onChange={(value) => onField("salutation", value)}
+          />
+        </p>
+      ) : doc.salutation ? (
+        <p className="salute">{doc.salutation}</p>
+      ) : null}
       <div
         ref={inner}
         className="lbody rich-body"
@@ -402,10 +480,12 @@ export function RichPaper({
             <span
               className={`rich-line ${isHidden ? `revealed hv-${doc.paragraphs[line.pi].hv}` : ""}`}
               key={n}
-              onDoubleClick={() =>
-                edit && setEditingParagraph(doc.paragraphs[line.pi].id)
-              }
-              title={edit ? "双击就地编辑这一段" : undefined}
+              onClick={() => {
+                if (!edit) return;
+                setEditingParagraph(doc.paragraphs[line.pi].id);
+              }}
+              hidden={edit && editingParagraph === doc.paragraphs[line.pi]?.id}
+              title={edit ? "点按这一段，直接在信纸上改" : undefined}
               style={{ top: line.y, left: seg.x, width: seg.w }}
             >
               {isHidden
@@ -424,6 +504,20 @@ export function RichPaper({
             </span>
           );
         })}
+        {edit &&
+          layout.paras
+            .filter((band) => !segments.some((item) => item.line.pi === band.pi))
+            .map((band) => (
+              <button
+                type="button"
+                key={doc.paragraphs[band.pi].id}
+                className="rich-line we empty-para"
+                style={{ top: band.y, left: band.x }}
+                onClick={() => setEditingParagraph(doc.paragraphs[band.pi].id)}
+              >
+                点此写正文
+              </button>
+            ))}
         {!edit &&
           layout.paras.map((b) => {
             const p = doc.paragraphs[b.pi];
@@ -444,33 +538,87 @@ export function RichPaper({
           editingParagraph &&
           layout.paras
             .filter((b) => doc.paragraphs[b.pi]?.id === editingParagraph)
-            .map((b) => (
-              <textarea
-                autoFocus
-                key={editingParagraph}
-                aria-label="信纸内段落编辑"
-                className="rich-inline-editor"
-                style={{
-                  top: b.y,
-                  width: "100%",
-                  height: Math.max(L * 3, b.h),
-                }}
-                value={doc.paragraphs[b.pi].text}
-                onChange={(e) =>
-                  onParagraphEdit?.(editingParagraph, e.target.value)
-                }
-                onBlur={() => setEditingParagraph(null)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setEditingParagraph(null);
-                }}
-              />
-            ))}
+            .map((b) => {
+              const paragraph = doc.paragraphs[b.pi];
+              return (
+                <div key={editingParagraph} className="wpara editing" style={{ top: b.y, minHeight: Math.max(L, b.h) }}>
+                  <div className="wpc">
+                    <button
+                      type="button"
+                      className={`wbtn ${paragraph.hidden ? "on" : ""}`}
+                      aria-label="设为隐藏段"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => setHideFor(hideFor === paragraph.id ? null : paragraph.id)}
+                    >
+                      藏
+                    </button>
+                    <button
+                      type="button"
+                      className="wbtn danger"
+                      aria-label="删除这一段"
+                      disabled={doc.paragraphs.length === 1}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        onDeleteParagraph?.(paragraph.id);
+                        setEditingParagraph(null);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {hideFor === paragraph.id && (
+                    <div className="hm" role="dialog" aria-label="隐藏段的发现方式">
+                      {(["speck", "emboss", "ink"] as const).map((hv) => (
+                        <button
+                          key={hv}
+                          type="button"
+                          className="hm-opt"
+                          aria-pressed={paragraph.hidden && paragraph.hv === hv}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => onHideParagraph?.(paragraph.id, true, hv)}
+                        >
+                          {{ speck: "纸上微点", emboss: "浅压印", ink: "隐形墨水" }[hv]}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          onHideParagraph?.(paragraph.id, false);
+                          setHideFor(null);
+                        }}
+                      >
+                        不再隐藏
+                      </button>
+                    </div>
+                  )}
+                  <PlainField
+                    multiline
+                    value={paragraph.text}
+                    label="信纸正文"
+                    placeholder="在信纸上写"
+                    className="tw"
+                    autoFocus
+                    onChange={(value) => onParagraphEdit?.(paragraph.id, value)}
+                    onSplit={(at, rest) => {
+                      const next = onSplitParagraph?.(paragraph.id, at, rest);
+                      setEditingParagraph(typeof next === "string" ? next : null);
+                    }}
+                    onMerge={() => {
+                      const index = doc.paragraphs.findIndex((item) => item.id === paragraph.id);
+                      onMergeParagraph?.(paragraph.id);
+                      setEditingParagraph(index > 0 ? doc.paragraphs[index - 1].id : null);
+                    }}
+                  />
+                </div>
+              );
+            })}
         {layout.items.map((box, n) => {
           const it = doc.items[n];
           if (!box || !it) return null;
           return (
+            <Fragment key={it.id}>
             <div
-              key={it.id}
               role={edit ? "button" : undefined}
               tabIndex={edit ? 0 : undefined}
               aria-label={
@@ -488,7 +636,11 @@ export function RichPaper({
                 zIndex: it.z + 1,
                 touchAction: edit ? "none" : "auto",
               }}
-              onPointerDown={(e) => pointerDown(e, it, box)}
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).closest("[contenteditable]")) return;
+                if (armedDelete && armedDelete !== it.id) setArmedDelete("");
+                pointerDown(e, it, box);
+              }}
               onPointerMove={pointerMove}
               onPointerUp={pointerUp}
               onPointerCancel={pointerUp}
@@ -555,13 +707,101 @@ export function RichPaper({
                 </>
               )}
             </div>
+            {edit && selected === it.id && it.t !== "hero" && (
+              <div
+                className="jn-toolbar"
+                role="toolbar"
+                aria-label="物件工具"
+                style={{
+                  left: box.x + box.w / 2,
+                  top: Math.max(4, box.y - 46),
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                {(
+                  [
+                    ["wrap", "环绕", "≋"],
+                    ["break", "上下分行", "☰"],
+                    ["over", "浮于文字上", "▣"],
+                  ] as const
+                ).map(([mode, label, icon]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    data-icon={icon}
+                    aria-pressed={it.mode === mode}
+                    aria-label={label}
+                    onClick={() => onPatch?.(it.id, { mode })}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  data-icon="↑"
+                  aria-label="上移一层"
+                  onClick={() => onPatch?.(it.id, { z: clamp(it.z + 1, 0, 60) })}
+                >
+                  上移一层
+                </button>
+                <button
+                  type="button"
+                  data-icon="↓"
+                  aria-label="下移一层"
+                  onClick={() => onPatch?.(it.id, { z: clamp(it.z - 1, 0, 60) })}
+                >
+                  下移一层
+                </button>
+                <button
+                  type="button"
+                  data-icon="✎"
+                  aria-label="编辑"
+                  onClick={() => onEditObject?.(it.id)}
+                >
+                  编辑
+                </button>
+                <button
+                  type="button"
+                  data-role="jn-delete"
+                  data-icon="×"
+                  className={armedDelete === it.id ? "armed" : ""}
+                  aria-label={armedDelete === it.id ? "再点一次删除" : "删除"}
+                  onClick={() => {
+                    if (armedDelete === it.id) onDelete?.(it.id);
+                    else setArmedDelete(it.id);
+                  }}
+                >
+                  {armedDelete === it.id ? "再点一次删除" : "删除"}
+                </button>
+              </div>
+            )}
+            </Fragment>
           );
         })}
       </div>
       <div className="signoff">
-        <p className="so-name">{doc.signoff}</p>
-        <p className="so-date">{doc.dateline}</p>
+        <p className="so-name">
+          {edit && onField ? (
+            <PlainField value={doc.signoff} label="署名" placeholder="落款" onChange={(value) => onField("signoff", value)} />
+          ) : (
+            doc.signoff
+          )}
+        </p>
+        <p className="so-date">
+          {edit && onField ? (
+            <PlainField value={doc.dateline} label="写信日期" placeholder="地点 / 日期" onChange={(value) => onField("dateline", value)} />
+          ) : (
+            doc.dateline
+          )}
+        </p>
       </div>
+      {edit && onAddParagraph ? (
+        <div className="wadd">
+          <button type="button" disabled={doc.paragraphs.length >= 60} onClick={onAddParagraph}>
+            ＋ 另起一段
+          </button>
+        </div>
+      ) : null}
       </div>
       </div>
       </section>

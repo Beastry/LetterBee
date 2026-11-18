@@ -6,7 +6,6 @@ import type { MailDraft } from "@/lib/mail-store";
 import {
   blankItem,
   bodyText,
-  ITEM_TYPES,
   visibleDocument,
   type ItemType,
   type JournalItem,
@@ -65,6 +64,8 @@ export function RichComposer({
     [selected, setSelected] = useState(""),
     [preview, setPreview] = useState(false),
     [focus, setFocus] = useState(false),
+    [drawer, setDrawer] = useState<"" | "seal" | "music" | "object" | "send">(""),
+    [addOpen, setAddOpen] = useState(false),
     [dirty, setDirty] = useState(false),
     [undoCount, setUndoCount] = useState(0),
     [redoCount, setRedoCount] = useState(0);
@@ -157,7 +158,7 @@ export function RichComposer({
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement).closest(
-        "input,textarea,[contenteditable=true]",
+        "input,textarea,[contenteditable]",
       );
       if (
         !typing &&
@@ -167,6 +168,7 @@ export function RichComposer({
         e.preventDefault();
         history(e.key.toLowerCase() === "z" && !e.shiftKey);
       }
+      if (e.key === "Escape") setFocus(false);
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         void save().catch((e) => setNotice(e.message));
@@ -175,13 +177,46 @@ export function RichComposer({
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [save, history]);
+  function setField(key: "title" | "to" | "from" | "postmark" | "dateline" | "salutation" | "signoff", value: string) {
+    change((d) => {
+      d[key] = value;
+    });
+  }
+  function splitParagraph(id: string, at: number, rest = "") {
+    const nextId = uid();
+    let created = false;
+    change((d) => {
+      const index = d.paragraphs.findIndex((p) => p.id === id);
+      if (index < 0 || d.paragraphs.length >= 60) return;
+      const text = d.paragraphs[index].text;
+      d.paragraphs[index].text = text.slice(0, at);
+      d.paragraphs.splice(index + 1, 0, { id: nextId, text: rest || text.slice(at), hv: "speck" });
+      d.items.forEach((item) => {
+        if (item.pi > index) item.pi++;
+      });
+      created = true;
+    });
+    return created ? nextId : undefined;
+  }
+  function mergeParagraph(id: string) {
+    change((d) => {
+      const index = d.paragraphs.findIndex((p) => p.id === id);
+      if (index <= 0) return;
+      d.paragraphs[index - 1].text += d.paragraphs[index].text;
+      d.paragraphs.splice(index, 1);
+      d.items.forEach((item) => {
+        if (item.pi === index) item.pi = index - 1;
+        else if (item.pi > index) item.pi--;
+      });
+    });
+  }
   function patch(id: string, value: Partial<JournalItem>, record = true) {
     change((d) => {
       const it = d.items.find((i) => i.id === id);
       if (it) Object.assign(it, value);
     }, record);
   }
-  function add(t: ItemType, src = "", ratio = 1) {
+  function add(t: ItemType, src = "", ratio = 1, extra?: Partial<JournalItem>) {
     if (doc.items.length >= 80) {
       setNotice("每封信最多80个物件");
       return;
@@ -209,6 +244,7 @@ export function RichComposer({
       it.heading = "翻开这张小纸条";
       it.message = "";
     }
+    if (extra) Object.assign(it, extra);
     change((d) => {
       if (d.items.length >= 80) throw new Error("每封信最多80个物件");
       d.items.push(it);
@@ -356,39 +392,17 @@ export function RichComposer({
       });
     });
   }
-  const field = (
-    key:
-      | "title"
-      | "to"
-      | "from"
-      | "postmark"
-      | "dateline"
-      | "salutation"
-      | "signoff",
-    label: string,
-  ) => (
-    <label key={key}>
-      {label}
-      <input
-        value={doc[key]}
-        onChange={(e) =>
-          change((d) => {
-            d[key] = e.target.value;
-          })
-        }
-        maxLength={key === "to" || key === "from" ? 40 : 80}
-      />
-    </label>
-  );
   const fileInput = (
     kind: ItemType | "music",
     label: string,
     replace?: string,
     poster = false,
+    inputId?: string,
   ) => (
     <label>
       {label}
       <input
+        id={inputId}
         disabled={busy || !mediaAvailable}
         type="file"
         accept={
@@ -466,183 +480,20 @@ export function RichComposer({
           {notice}
         </p>
       )}
-      <div className="rich-columns" inert={busy}>
-        <aside className="rich-controls" aria-label="编辑工具">
+      <div className="rich-columns visual-editor" inert={busy}>
+        <aside className={`drawer rich-controls ${drawer && drawer !== "send" ? "open" : ""}`} hidden={!drawer || drawer === "send"} aria-label="抽屉">
+          <div className="drawer-head">
+            <span>
+              {drawer === "seal" ? "封缄 · 火漆、信纸与信封" : drawer === "music" ? "背景音乐 · 这封信" : "选中的物件"}
+            </span>
+            <button type="button" aria-label="关闭" onClick={() => setDrawer("")}>✕</button>
+          </div>
+          {drawer === "object" && (
           <details open>
-            <summary>信封与信笺</summary>
-            {field("title", "标题")}
-            <label>
-              整封信展开日期（可选，上海时区）
-              <input
-                type="date"
-                value={doc.unlockAt || ""}
-                onChange={(e) =>
-                  change((d) => {
-                    d.unlockAt = e.target.value || undefined;
-                  })
-                }
-              />
-            </label>
-            {field("to", "信封上写给谁（不代替投递地址）")}
-            {field("from", "信封寄信人（不更改账号身份）")}
-            {field("postmark", "邮戳")}
-            {field("dateline", "写信地点/日期")}
-            {field("salutation", "称呼")}
-            {field("signoff", "署名/落款")}
-          </details>
-          <details open>
-            <summary>正文与隐藏段</summary>
-            {doc.paragraphs.map((p, n) => (
-              <fieldset key={p.id}>
-                <legend>第{n + 1}段</legend>
-                <textarea
-                  aria-label={`第${n + 1}段正文`}
-                  value={p.text}
-                  onChange={(e) =>
-                    change((d) => {
-                      d.paragraphs[n].text = e.target.value;
-                    })
-                  }
-                  onPaste={(e) => {
-                    const files = e.clipboardData.files;
-                    if (files.length) {
-                      e.preventDefault();
-                      void run(() => addFiles(files));
-                    }
-                  }}
-                />
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={!!p.hidden}
-                    onChange={(e) =>
-                      change((d) => {
-                        d.paragraphs[n].hidden = e.target.checked;
-                      })
-                    }
-                  />
-                  藏起这一段
-                </label>
-                {p.hidden && (
-                  <label>
-                    发现方式
-                    <select
-                      value={p.hv || "speck"}
-                      onChange={(e) =>
-                        change((d) => {
-                          d.paragraphs[n].hv = e.target.value as
-                            "speck" | "ink" | "emboss";
-                        })
-                      }
-                    >
-                      <option value="speck">纸上微点</option>
-                      <option value="emboss">浅压印</option>
-                      <option value="ink">隐形墨水</option>
-                    </select>
-                  </label>
-                )}
-                <label>
-                  展开日期（上海时区）
-                  <input
-                    type="date"
-                    value={p.unlockAt || ""}
-                    onChange={(e) =>
-                      change((d) => {
-                        d.paragraphs[n].unlockAt = e.target.value || undefined;
-                      })
-                    }
-                  />
-                </label>
-                <div className="rich-toolbar">
-                  <button
-                    type="button"
-                    disabled={!n}
-                    onClick={() =>
-                      change((d) => {
-                        [d.paragraphs[n - 1], d.paragraphs[n]] = [
-                          d.paragraphs[n],
-                          d.paragraphs[n - 1],
-                        ];
-                        d.items.forEach((i) => {
-                          if (i.pi === n) i.pi--;
-                          else if (i.pi === n - 1) i.pi++;
-                        });
-                      })
-                    }
-                  >
-                    上移
-                  </button>
-                  <button
-                    type="button"
-                    disabled={doc.paragraphs.length === 1}
-                    onClick={() =>
-                      change((d) => {
-                        d.paragraphs.splice(n, 1);
-                        d.items.forEach((i) => {
-                          if (i.pi > n) i.pi--;
-                          i.pi = Math.min(i.pi, d.paragraphs.length - 1);
-                        });
-                      })
-                    }
-                  >
-                    删除段落
-                  </button>
-                </div>
-              </fieldset>
-            ))}
-            <button
-              type="button"
-              disabled={doc.paragraphs.length >= 60}
-              onClick={() =>
-                change((d) =>
-                  d.paragraphs.push({ id: uid(), text: "", hv: "speck" }),
-                )
-              }
-            >
-              ＋另起一段
+            <summary>纸上物件</summary>
+            <button type="button" disabled={busy || !mediaAvailable} onClick={() => void run(compressAll)}>
+              压缩本信图片
             </button>
-            <p className="rich-privacy-note">
-              也可双击右侧信纸文字就地编辑。粘贴为纯文字，不执行HTML。
-            </p>
-          </details>
-          <details open>
-            <summary>纸上物件 · 拖放排版</summary>
-            <div className="rich-toolbar">
-              {ITEM_TYPES.filter(
-                (t) => !["photo", "voice", "video"].includes(t),
-              ).map((t) => (
-                <button type="button" key={t} onClick={() => add(t)}>
-                  {labels[t]}
-                </button>
-              ))}
-            </div>
-            {fileInput("photo", "添加照片（可多选/拖放/粘贴）")}
-            {fileInput("voice", "添加音频")}
-            {fileInput("video", "添加视频")}
-            {fileInput("sticker", "添加自己的透明贴纸")}
-            <div className="rich-toolbar">
-              <button
-                type="button"
-                disabled={busy || !mediaAvailable}
-                onClick={() => void run(capturePhoto)}
-              >
-                拍照
-              </button>
-              <button
-                type="button"
-                disabled={busy || !mediaAvailable}
-                onClick={() => void run(recordVoice)}
-              >
-                录音
-              </button>
-              <button
-                type="button"
-                disabled={busy || !mediaAvailable}
-                onClick={() => void run(compressAll)}
-              >
-                压缩本信图片
-              </button>
-            </div>
             <p className="rich-privacy-note">
               图片去EXIF并压缩到最长1800px；GIF保留动画。单文件8MB，每信40文件/32MB。不加载生日站素材。
             </p>
@@ -897,8 +748,22 @@ export function RichComposer({
               </fieldset>
             )}
           </details>
-          <details>
-            <summary>信纸、火漆与信封外观</summary>
+          )}
+          {drawer === "seal" && (
+          <details open>
+            <summary>封缄 · 火漆、信纸与信封</summary>
+            <label>
+              整封信展开日期（可选，上海时区）
+              <input
+                type="date"
+                value={doc.unlockAt || ""}
+                onChange={(e) =>
+                  change((d) => {
+                    d.unlockAt = e.target.value || undefined;
+                  })
+                }
+              />
+            </label>
             <label>
               信纸颜色
               <input
@@ -1120,8 +985,10 @@ export function RichComposer({
               </select>
             </label>
           </details>
-          <details>
-            <summary>背景音乐 · 播放列表</summary>
+          )}
+          {drawer === "music" && (
+          <details open>
+            <summary>背景音乐 · 这封信</summary>
             {fileInput("music", "上传自己的配乐（最多20首）")}
             <label>
               播放方式
@@ -1230,8 +1097,9 @@ export function RichComposer({
               在收信预览中试听。配乐不会自动播放，需拆封/点击；切到后台暂停，回到前台恢复。只用自己有权使用的文件，不嵌外部播放器。
             </p>
           </details>
+          )}
         </aside>
-        <section className="rich-canvas" aria-label="实时信纸预览">
+        <section className="rich-canvas wys" aria-label="信纸">
           <RichPaper
             doc={doc}
             edit
@@ -1241,6 +1109,10 @@ export function RichComposer({
             onGestureStart={() => {
               past.current = [...past.current.slice(-49), current.current];
               setUndoCount(past.current.length);
+            }}
+            onEditObject={(id) => {
+              setSelected(id);
+              setDrawer("object");
             }}
             onDelete={(id) => {
               change((d) => {
@@ -1256,10 +1128,81 @@ export function RichComposer({
                 if (p) p.text = text;
               })
             }
+            onField={setField}
+            onSplitParagraph={splitParagraph}
+            onMergeParagraph={mergeParagraph}
+            onDeleteParagraph={(id) =>
+              change((d) => {
+                if (d.paragraphs.length === 1) return;
+                const index = d.paragraphs.findIndex((p) => p.id === id);
+                if (index < 0) return;
+                d.paragraphs.splice(index, 1);
+                d.items.forEach((item) => {
+                  if (item.pi > index) item.pi--;
+                  item.pi = Math.min(item.pi, d.paragraphs.length - 1);
+                });
+              })
+            }
+            onAddParagraph={() =>
+              change((d) => {
+                if (d.paragraphs.length >= 60) return;
+                d.paragraphs.push({ id: uid(), text: "", hv: "speck" });
+              })
+            }
+            onHideParagraph={(id, hidden, hv) =>
+              change((d) => {
+                const p = d.paragraphs.find((item) => item.id === id);
+                if (!p) return;
+                p.hidden = hidden;
+                if (hv) p.hv = hv;
+              })
+            }
           />
+          <div className="jn-palette" aria-label="插入物件">
+            <span className="jn-group">照片</span>
+            <button type="button" className="jn-pill" data-icon="▧" disabled={!mediaAvailable} onClick={() => document.getElementById("add-photo")?.click()}>照片</button>
+            <button type="button" className="jn-pill" data-icon="▣" disabled={busy || !mediaAvailable} onClick={() => void run(capturePhoto)}>拍照</button>
+            <span className="jn-group">语音</span>
+            <button type="button" className="jn-pill" data-icon="♫" disabled={!mediaAvailable} onClick={() => document.getElementById("add-voice")?.click()}>语音</button>
+            <button type="button" className="jn-pill" data-icon="●" disabled={busy || !mediaAvailable} onClick={() => void run(recordVoice)}>录音</button>
+            <span className="jn-group">装饰</span>
+            {(["sticker", "stamp", "ticket", "timeline", "easter", "ending", "hero"] as const).map((t) => (
+              <button type="button" className="jn-pill" key={t} onClick={() => add(t)}>{labels[t]}</button>
+            ))}
+            <button type="button" className="jn-pill" onClick={() => setAddOpen((v) => !v)}>胶带</button>
+            {addOpen && (
+              <span className="jn-tape-pop">
+                {["wine", "gold", "linen", "grid", "sage"].map((k) => (
+                  <button key={k} type="button" className={`jn-swatch ji-tape-${k}`} aria-label={k} onClick={() => { add("tape", "", 1, { k }); setAddOpen(false); }} />
+                ))}
+              </span>
+            )}
+            <button type="button" className="jn-pill" disabled={!mediaAvailable} onClick={() => document.getElementById("add-video")?.click()}>视频</button>
+          </div>
+          <div className="sr-only">
+            {fileInput("photo", "添加照片", undefined, false, "add-photo")}
+            {fileInput("voice", "添加音频", undefined, false, "add-voice")}
+            {fileInput("video", "添加视频", undefined, false, "add-video")}
+          </div>
         </section>
       </div>
-      <section className="rich-send rich-controls" inert={busy}>
+      <div className={`wys-bar ${focus ? "off" : ""}`}>
+        <button type="button" onClick={() => setDrawer("seal")}>封缄</button>
+        <button type="button" onClick={() => setDrawer("music")}>音乐</button>
+        <button type="button" className="gold" onClick={() => setDrawer("send")}>寄出</button>
+      </div>
+      {focus && (
+        <div className="focus-pill" role="toolbar" aria-label="专注写信">
+          <span className="fp-state">{dirty ? "未保存" : "已保存"}</span>
+          <button type="button" onClick={() => void run(save)}>保存</button>
+          <button type="button" onClick={() => setFocus(false)}>退出专注 · Esc</button>
+        </div>
+      )}
+      <section className={`rich-send drawer ${drawer === "send" ? "open" : ""}`} hidden={drawer !== "send"} inert={busy}>
+        <div className="drawer-head">
+          <span>封好寄出</span>
+          <button type="button" aria-label="关闭" onClick={() => setDrawer("")}>✕</button>
+        </div>
         <h2>封好寄出</h2>
         <p>
           保持现有账号/公开邮寄号/通信关系与投递规则。信封上的昵称不会改变真实收信账号。
