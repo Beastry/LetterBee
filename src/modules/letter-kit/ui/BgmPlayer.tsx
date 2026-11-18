@@ -181,17 +181,17 @@ export const BgmPlayer = forwardRef<
   }
 
   return (
-    <div className="lk-bgm" data-testid="bgm-player">
+    <div className={`music glass ${audible || playing ? "" : "hide"} ${playing ? "playing" : ""}`} data-testid="bgm-player">
       <audio ref={audioA} preload="auto" onTimeUpdate={() => crossfade(0)} onEnded={() => crossfade(0)} />
       <audio ref={audioB} preload="auto" onTimeUpdate={() => crossfade(1)} onEnded={() => crossfade(1)} />
-      <button type="button" onClick={() => (playing && started.current ? stop() : start())}>
-        {playing ? "暂停配乐" : "播放配乐"}
+      <button type="button" className="disc" aria-label={playing ? "暂停配乐" : "播放配乐"} onClick={() => (playing && started.current ? stop() : start())}>
+        <span>{playing ? "❚❚" : "▶"}</span>
       </button>
-      <span>{title}</span>
-      <button
-        type="button"
-        onClick={() => setMode((value) => (value === "sequence" ? "shuffle" : "sequence"))}
-      >
+      <div className="mi">
+        <div className="mt">{title || "背景音乐"}</div>
+        <div className="ms">{playing ? "正在播放" : "轻触播放"} · {mode === "sequence" ? "顺序" : "随机"}</div>
+      </div>
+      <button type="button" className="mnext" onClick={() => setMode((value) => (value === "sequence" ? "shuffle" : "sequence"))}>
         {mode === "sequence" ? "顺序" : "随机"}
       </button>
     </div>

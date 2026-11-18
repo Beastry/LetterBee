@@ -1,4 +1,5 @@
 import { RichReader } from "@/modules/letter-kit/rich/RichReader";
+import "@/modules/letter-kit/ceremony/skin.css";
 import { formatISODate } from "@/modules/letter-kit/today";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -25,15 +26,14 @@ export default async function MailLetterPage({
 
   if (letter.document)
     return (
-      <main className="rich-reader-shell">
-        <p>
-          {letter.senderId === user.id
-            ? "已寄出 · 原稿已封存，不可修改"
-            : "已送达"}{" "}
-          · 来自 {sender.name}
-        </p>
-        <Link href="/app">← 邮局与收信箱</Link>
-        <Link href="/app/write">再写一封信</Link>
+      <main className="lb-skin rich-reader-shell">
+        <nav className="dock glass">
+          <Link href="/app">邮局</Link>
+          <span>
+            {letter.senderId === user.id ? "已寄出 · 不可修改" : "已送达"} · {sender.name}
+          </span>
+          <Link href="/app/write">再写一封</Link>
+        </nav>
         <RichReader document={letter.document} />
       </main>
     );

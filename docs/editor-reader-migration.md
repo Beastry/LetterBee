@@ -81,3 +81,15 @@
 真实 HTTP 驱动与脱敏结果在 `/workspace/letterbee-migration/local-http-regression.mjs`、`local-preview/http-results.json`；仅日志/临时 fixture 留在 box，不加入仓库。没有浏览器视觉或设备权限验收；后续公网部署与 HTTP 验收见发布记录。
 
 迁移后预览配额为60段、80个 journal 物件、20首配乐；源 journal 上限200。本轮基于800字产品限制与 KV 单快照收紧物件数量；如必须保留原容量，应在切强一致存储时一起评审。外部音乐 iframe 与跨草稿公共贴纸库没有移入，需要 Neil 决定是否另做通用且有授权边界的方案。
+
+## 外观复原（相对 7771c20，接入真实草稿→寄信→拆信）
+
+上一轮功能已接入，但 `rich.css` / `letter-kit.css` 是浅色改写，不是源站墨色书桌、亚麻信纸和拆信仪式。本轮在不改数据模型、权限、R2、寄出冻结、纯文本信、`/letterbee` basePath 与 PR #14 依赖修复的前提下，把读信与写信外观接回源站结构：
+
+- 读信：`ceremony/Ceremony.tsx` 复用源 `visitorPage` 的书桌信封 → 拆信刀划蜡 → 碎片 / 封舌 / 信纸升起。`LetterExperience` 在真实 `RichReader`（`/app/letters/:id`）与样例信上共用；`preview` 仍直接看纸，不走仪式。
+- 纸面：`RichPaper` 使用源 `ypaper` / `letter` / `lsheet` / `lbody` / `signoff`，物件使用 `ji-*`（拍立得、胶带、语音、胶片、邮戳、票根、时间线、题头、落款蜡印、折页）。
+- 编辑器：写信页与草稿箱套 `.lb-skin`，顶栏用源 `.top`。寄信/邀请控件保留，这是 LetterBee 流程，源单站编辑器没有。
+- 配乐坞：`.music.glass` 唱片按钮。仍是自有上传曲目，不是网易云 iframe。
+- 装饰资源：`ceremony/assets` 按源 `scripts/gen-static-assets.py` 重绘刀、衬里、火漆、亚麻纹（SVG 替代 webp）。手写体是 OFL Great Vibes 拉丁子集。未复制源 `content.json` 裁出的中文 woff2、笔刷 webp、银河/蛋糕、私人媒体。
+
+样式只挂在 `.lb-skin` 下，登录、邮局首页和全局预览条保持原样。
