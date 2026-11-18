@@ -71,10 +71,13 @@ export const RichMusicPlayer = forwardRef<
     [audible],
   );
   if (!music.tracks.length) return null;
+  const shown = audible || status.playing;
   return (
-    <div className="rich-music" aria-label="背景音乐">
+    <div className={`music glass ${shown ? "" : "hide"} ${status.playing ? "playing" : ""}`} aria-label="背景音乐">
       <button
         type="button"
+        className="disc"
+        aria-label={status.playing ? "暂停背景音乐" : "播放背景音乐"}
         onClick={() => {
           requested.current = true;
           engine.current?.unlock();
@@ -82,21 +85,23 @@ export const RichMusicPlayer = forwardRef<
           else void engine.current?.play({ unmute: true });
         }}
       >
-        {status.playing ? "暂停音乐" : "播放音乐"}
+        <span>{status.playing ? "❚❚" : "▶"}</span>
       </button>
-      <span>{title}</span>
-      <button type="button" onClick={() => engine.current?.next()}>
+      <div className="mi">
+        <div className="mt">{title || "背景音乐"}</div>
+        <div className="ms">{status.blocked ? "轻触播放" : status.playing ? "正在播放" : "轻触播放"}</div>
+      </div>
+      <button type="button" className="mnext" onClick={() => engine.current?.next()}>
         下一首
       </button>
       <button
         type="button"
+        className="mute"
+        aria-label={status.muted ? "取消静音" : "静音"}
         onClick={() => engine.current?.setMuted(!status.muted)}
       >
-        {status.muted ? "取消静音" : "静音"}
+        {status.muted ? "🔇" : "🔊"}
       </button>
-      {status.blocked && (
-        <span role="status">浏览器阻止自动播放，请点击播放</span>
-      )}
     </div>
   );
 });

@@ -19,6 +19,7 @@ import { RichPaper } from "./RichPaper";
 import { RichReader } from "./RichReader";
 import "./capture.css";
 import "./rich.css";
+import "../ceremony/skin.css";
 const labels: Record<ItemType, string> = {
   photo: "照片",
   voice: "语音",
@@ -409,7 +410,7 @@ export function RichComposer({
   );
   return (
     <main
-      className={`rich-workspace ${focus ? "rich-focus" : ""}`}
+      className={`lb-skin rich-workspace ${focus ? "rich-focus" : ""}`}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes("Files")) e.preventDefault();
       }}
@@ -420,7 +421,7 @@ export function RichComposer({
         }
       }}
     >
-      <div className="rich-toolbar">
+      <div className="top">
         <h1>写一封信</h1>
         <Link href="/app/write">草稿箱</Link>
         <button
@@ -440,13 +441,13 @@ export function RichComposer({
         <button type="button" onClick={() => setFocus((v) => !v)}>
           {focus ? "退出专注" : "专注写信"}
         </button>
-        <button type="button" disabled={busy} onClick={() => void run(save)}>
+        <button type="button" className="primary" disabled={busy} onClick={() => void run(save)}>
           保存草稿
         </button>
         <button type="button" onClick={() => setPreview(true)}>
           收信预览
         </button>
-        <span>
+        <span className="auto-state">
           {dirty ? "未保存" : "已保存"} · r{revision} · {count}/800字
         </span>
       </div>
@@ -1343,6 +1344,7 @@ export function RichComposer({
           </button>
           <p>当前上海日期的收信效果；未来段落/附件已过滤，隐藏段需发现。</p>
           <RichReader
+            preview
             document={visibleDocument(
               doc,
               formatISODate(new Date(), "Asia/Shanghai"),

@@ -227,9 +227,10 @@ export function RichPaper({
     switch (it.t) {
       case "photo":
         return (
-          <figure>
+          <figure className="ji-pola">
             <button
               type="button"
+              className="ph"
               aria-label={`放大照片：${it.caption || "照片"}`}
               onClick={() => !edit && setLightbox(it.id)}
             >
@@ -244,8 +245,8 @@ export function RichPaper({
         );
       case "voice":
         return (
-          <div>
-            <span>{it.caption || "一段语音"}</span>
+          <div className="ji-voice">
+            <p>{it.caption || "一段语音"}</p>
             <audio
               controls
               preload="none"
@@ -258,7 +259,10 @@ export function RichPaper({
         );
       case "video":
         return (
-          <figure>
+          <figure className="ji-video">
+            <button type="button" className="ji-film" aria-label="播放短片" onClick={(e) => (e.currentTarget.nextElementSibling as HTMLVideoElement | null)?.play()}>
+              {it.poster ? <img src={appPath(it.poster)} alt="" /> : <span>▶</span>}
+            </button>
             <video
               controls
               playsInline
@@ -282,62 +286,64 @@ export function RichPaper({
         );
       case "tape":
         return (
-          <span className={`rich-tape tape-${it.k}`} aria-label="装饰胶带" />
+          <span className={`rich-tape ji-tape ji-tape-${it.k || "linen"}`} aria-label="装饰胶带" />
         );
       case "stamp":
-        return <span className="rich-stamp">{it.text || "邮"}</span>;
+        return (
+          <span className={`rich-stamp ji-stamp ji-stamp-${it.k || "post"}`}>
+            <strong>{it.text || "邮"}</strong>
+          </span>
+        );
       case "ticket":
         return (
-          <div className="rich-ticket">
-            <b>{it.text || "一张票根"}</b>
-            <p>{it.sub}</p>
+          <div className="rich-ticket ji-ticket">
+            <strong>{it.text || "一张票根"}</strong>
+            <small>{it.sub}</small>
           </div>
         );
       case "timeline":
         return (
-          <ol className="rich-timeline">
-            {it.events.map((e, i) => (
-              <li key={i}>
-                <small>{e.date}</small>
-                <b>{e.title}</b>
-                <p>{e.text}</p>
-              </li>
-            ))}
-          </ol>
+          <div className="ji-timeline">
+            <h3>{it.heading || "时间线"}</h3>
+            <ol>
+              {it.events.map((e, i) => (
+                <li key={i}>
+                  <time>{e.date}</time>
+                  <strong>{e.title}</strong>
+                  <p>{e.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
         );
       case "hero":
       case "ending":
         return (
-          <div className={`rich-${it.t}`}>
+          <div className={`ji-${it.t}`}>
             <h3>{it.heading}</h3>
             <p>{it.text || it.sub}</p>
-            {it.t === "ending" && it.src && (
-              <img
-                className="rich-ending-seal"
-                src={appPath(it.src)}
-                alt="落款印章"
-              />
-            )}
+            {it.t === "ending" &&
+              (it.src ? (
+                <img className="ji-wax" src={appPath(it.src)} alt="落款印章" />
+              ) : (
+                <i className="ji-wax" aria-hidden="true" />
+              ))}
           </div>
         );
       case "easter":
         return (
-          <div className="rich-easter">
-            <button
-              type="button"
-              aria-expanded={edit || easter.includes(it.id)}
-              onClick={() =>
-                setEaster((v) =>
-                  v.includes(it.id)
-                    ? v.filter((x) => x !== it.id)
-                    : [...v, it.id],
-                )
-              }
-            >
-              {it.heading || "翻开这张小纸条"}
-            </button>
-            {(edit || easter.includes(it.id)) && <p>{it.message}</p>}
-          </div>
+          <button
+            type="button"
+            className="ji-fold"
+            aria-expanded={edit || easter.includes(it.id)}
+            onClick={() =>
+              setEaster((v) =>
+                v.includes(it.id) ? v.filter((x) => x !== it.id) : [...v, it.id],
+              )
+            }
+          >
+            <span>{edit || easter.includes(it.id) ? it.message : it.heading || ""}</span>
+          </button>
         );
     }
   }
@@ -362,23 +368,25 @@ export function RichPaper({
   const picture = photos.find((p) => p.id === lightbox);
   return (
     <article
-      className={`rich-paper paper-${doc.paper.theme} ${doc.paper.ruled || doc.style?.paper?.tex === "lined" ? "paper-ruled" : ""}`}
+      className={`ypaper rich-paper paper-${doc.paper.theme} ${doc.paper.ruled || doc.style?.paper?.tex === "lined" ? "paper-ruled" : ""}`}
       style={style}
       data-testid="rich-letter-paper"
     >
-      <header>
-        <p>{doc.dateline}</p>
-        <h2>{doc.title}</h2>
-        <p>{doc.salutation}</p>
-      </header>
+      <section className="sec letter" data-journal="1">
+      <div className="eyebrow lhead">
+        <h2 className="ltitle">{doc.title}</h2>
+      </div>
       {!edit && typed < bodyLength && !immediate && (
-        <button type="button" onClick={() => setTyped(bodyLength)}>
+        <button type="button" className="wbtn" onClick={() => setTyped(bodyLength)}>
           一次展开文字
         </button>
       )}
+      <div className="paper has-so">
+      <div className="lsheet">
+      {doc.salutation ? <p className="salute">{doc.salutation}</p> : null}
       <div
         ref={inner}
-        className="rich-body"
+        className="lbody rich-body"
         style={{ height: layout.height + L }}
       >
         {segments.map(({ line, seg }, n) => {
@@ -423,7 +431,7 @@ export function RichPaper({
               <button
                 type="button"
                 key={p.id}
-                className={`rich-hidden hv-${p.hv}`}
+                className={`rich-hidden hp-speck hv-${p.hv}`}
                 style={{ top: Math.max(0, b.y - 12), left: (b.pi * 23) % 120 }}
                 aria-label="这里有一段隐藏文字，轻触展开"
                 onClick={() => setRevealed((v) => [...v, p.id])}
@@ -470,7 +478,7 @@ export function RichPaper({
                   ? `${it.t}物件，方向键移动，Shift加速；Delete删除`
                   : undefined
               }
-              className={`rich-item item-${it.t} ${selected === it.id ? "selected" : ""}`}
+              className={`rich-item ji ji-${it.t} item-${it.t} ${selected === it.id ? "selected" : ""}`}
               style={{
                 left: box.x,
                 top: box.y,
@@ -550,7 +558,13 @@ export function RichPaper({
           );
         })}
       </div>
-      <footer>{doc.signoff}</footer>
+      <div className="signoff">
+        <p className="so-name">{doc.signoff}</p>
+        <p className="so-date">{doc.dateline}</p>
+      </div>
+      </div>
+      </div>
+      </section>
       {picture && (
         <div
           className="rich-lightbox"

@@ -13,6 +13,7 @@ import {
   NewRichDraft,
 } from "@/modules/letter-kit/rich/RichComposer";
 import "@/modules/letter-kit/rich/rich.css";
+import "@/modules/letter-kit/ceremony/skin.css";
 export const dynamic = "force-dynamic";
 export default async function WritePage({
   searchParams,
@@ -52,14 +53,14 @@ export default async function WritePage({
       .filter((d) => d.ownerId === user.id && !d.letterId)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
-    <main className="rich-workspace">
+    <main className="lb-skin rich-workspace">
       <section className="rich-drafts">
         <Link href="/app">← 回到邮局</Link>
         <h1 className="text-3xl my-6">草稿箱 · 写一封信</h1>
         <p>
           用真实草稿写信、保存、寄给通信簿/公开邮寄号，或生成邀请认领。寄出后保留不可修改的信纸快照。
         </p>
-        <div className="rich-toolbar">
+        <div className="top">
           <NewRichDraft to={q.to} mode={q.mode} />
           <Link href="/app/contacts">通信簿</Link>
         </div>
